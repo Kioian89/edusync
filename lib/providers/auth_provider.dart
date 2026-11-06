@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,12 +7,14 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../models/user.dart';
 import '../models/class_group.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/firestore_sync_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   List<User> _users = [];
   List<ClassGroup> _classes = [];
   final _uuid = const Uuid();
+  StreamSubscription? _classesSubscription;
 
   User? get currentUser => _currentUser;
   List<User> get users => _users;
@@ -113,6 +116,7 @@ class AuthProvider extends ChangeNotifier {
     if (currentUserId != null) {
       try {
         _currentUser = _users.firstWhere((u) => u.id == currentUserId);
+        startListeningToClasses();
       } catch (_) {}
     }
   }
@@ -180,6 +184,7 @@ class AuthProvider extends ChangeNotifier {
           _currentUser = matchedUser;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('currentUserId', matchedUser.id);
+          startListeningToClasses();
           notifyListeners();
           return null;
         }
@@ -192,6 +197,7 @@ class AuthProvider extends ChangeNotifier {
           _currentUser = demoUser;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('currentUserId', demoUser.id);
+          startListeningToClasses();
           notifyListeners();
           return null;
         } catch (_) {
@@ -210,6 +216,7 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = user;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('currentUserId', user.id);
+      startListeningToClasses();
       notifyListeners();
       return null;
     } catch (_) {
@@ -304,6 +311,9 @@ class AuthProvider extends ChangeNotifier {
     );
     _classes.add(cls);
     await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.saveClass(cls);
+    }
     notifyListeners();
   }
 
@@ -349,6 +359,12 @@ class AuthProvider extends ChangeNotifier {
     );
 
     await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.addStudentToClass(
+        classId: classId,
+        studentId: studentId,
+      );
+    }
     notifyListeners();
     return null;
   }
@@ -359,6 +375,38 @@ class AuthProvider extends ChangeNotifier {
     required String studentId,
   }) async {
     return addStudentToClass(classId: classId, studentId: studentId);
+  }
+
+  /// Start real-time Firestore synchronization for classes.
+  void startListeningToClasses() {
+    _classesSubscription?.cancel();
+    if (_currentUser == null || !FirestoreSyncService.isAvailable) return;
+
+    final stream = _currentUser!.role == UserRole.teacher
+        ? FirestoreSyncService.streamClassesForTeacher(_currentUser!.id)
+        : FirestoreSyncService.streamClassesForStudent(_currentUser!.id);
+
+    _classesSubscription = stream.listen((remoteClasses) {
+      if (remoteClasses.isNotEmpty) {
+        bool changed = false;
+        for (final remote in remoteClasses) {
+          final idx = _classes.indexWhere((c) => c.id == remote.id);
+          if (idx != -1) {
+            _classes[idx] = remote;
+            changed = true;
+          } else {
+            _classes.add(remote);
+            changed = true;
+          }
+        }
+        if (changed) {
+          _saveData();
+          notifyListeners();
+        }
+      }
+    }, onError: (e) {
+      debugPrint('Firestore classes stream error: $e');
+    });
   }
 
   /// Send password reset link to user's email via Firebase Auth.
@@ -380,6 +428,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _classesSubscription?.cancel();
     if (FirebaseAuthService.isFirebaseAvailable) {
       try {
         await FirebaseAuthService.signOut();
@@ -391,6 +440,12 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('currentUserId');
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _classesSubscription?.cancel();
+    super.dispose();
   }
 }
 

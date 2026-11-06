@@ -55,6 +55,19 @@ class _SplashScreenState extends State<SplashScreen>
       );
     }
 
+    // Start Firestore real-time sync if already logged in from a previous session
+    if (auth.isLoggedIn && auth.currentUser != null) {
+      auth.startListeningToClasses();
+      final classIds = auth.classes.map((c) => c.id).toList();
+      if (classIds.isNotEmpty) {
+        activity.syncWithFirestore(
+          userId: auth.currentUser!.id,
+          isTeacher: auth.isTeacher,
+          classIds: classIds,
+        );
+      }
+    }
+
     await Future.delayed(const Duration(milliseconds: 800));
 
     if (!mounted) return;

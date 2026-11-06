@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../models/activity.dart';
 import '../models/announcement.dart';
 import '../models/submission.dart';
 import '../models/user.dart';
+import '../services/firestore_sync_service.dart';
 
 class ActivityProvider extends ChangeNotifier {
   List<Activity> _activities = [];
@@ -15,6 +17,10 @@ class ActivityProvider extends ChangeNotifier {
   List<Announcement> _announcements = [];
   final _uuid = const Uuid();
   bool _isSyncing = false;
+
+  StreamSubscription? _activitiesSub;
+  StreamSubscription? _submissionsSub;
+  StreamSubscription? _announcementsSub;
 
   List<Activity> get activities => _activities;
   List<Submission> get submissions => _submissions;
@@ -113,12 +119,18 @@ class ActivityProvider extends ChangeNotifier {
     );
     _announcements.add(a);
     await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.saveAnnouncement(a);
+    }
     notifyListeners();
   }
 
   Future<void> deleteAnnouncement(String id) async {
     _announcements.removeWhere((a) => a.id == id);
     await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.deleteAnnouncement(id);
+    }
     notifyListeners();
   }
 
@@ -155,17 +167,26 @@ class ActivityProvider extends ChangeNotifier {
     );
     _activities.add(activity);
 
+    final newSubmissions = <Submission>[];
     for (final studentId in studentIds) {
-      _submissions.add(Submission(
+      final sub = Submission(
         id: _uuid.v4(),
         activityId: activity.id,
         studentId: studentId,
         studentName: '',
         status: SubmissionStatus.pending,
-      ));
+      );
+      _submissions.add(sub);
+      newSubmissions.add(sub);
     }
 
     await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.saveActivity(activity);
+      for (final s in newSubmissions) {
+        await FirestoreSyncService.saveSubmission(s);
+      }
+    }
     notifyListeners();
   }
 
@@ -177,23 +198,31 @@ class ActivityProvider extends ChangeNotifier {
   }) async {
     final acts = activitiesForClass(classId);
     bool changed = false;
+    final addedSubmissions = <Submission>[];
     for (final act in acts) {
       final exists = _submissions.any(
         (s) => s.activityId == act.id && s.studentId == studentId,
       );
       if (!exists) {
-        _submissions.add(Submission(
+        final newSub = Submission(
           id: _uuid.v4(),
           activityId: act.id,
           studentId: studentId,
           studentName: studentName,
           status: SubmissionStatus.pending,
-        ));
+        );
+        _submissions.add(newSub);
+        addedSubmissions.add(newSub);
         changed = true;
       }
     }
     if (changed) {
       await _saveData();
+      if (FirestoreSyncService.isAvailable) {
+        for (final sub in addedSubmissions) {
+          await FirestoreSyncService.saveSubmission(sub);
+        }
+      }
       notifyListeners();
     }
   }
@@ -209,8 +238,9 @@ class ActivityProvider extends ChangeNotifier {
     final idx = _submissions
         .indexWhere((s) => s.activityId == activityId && s.studentId == studentId);
 
+    Submission targetSub;
     if (idx != -1) {
-      _submissions[idx] = Submission(
+      targetSub = Submission(
         id: _submissions[idx].id,
         activityId: activityId,
         studentId: studentId,
@@ -221,8 +251,9 @@ class ActivityProvider extends ChangeNotifier {
         fileName: fileName,
         studentAnswerSheet: studentAnswerSheet,
       );
+      _submissions[idx] = targetSub;
     } else {
-      _submissions.add(Submission(
+      targetSub = Submission(
         id: _uuid.v4(),
         activityId: activityId,
         studentId: studentId,
@@ -232,10 +263,14 @@ class ActivityProvider extends ChangeNotifier {
         fileNames: fileNames,
         fileName: fileName,
         studentAnswerSheet: studentAnswerSheet,
-      ));
+      );
+      _submissions.add(targetSub);
     }
 
     await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.saveSubmission(targetSub);
+    }
     notifyListeners();
   }
 
@@ -247,7 +282,7 @@ class ActivityProvider extends ChangeNotifier {
     final idx = _submissions.indexWhere((s) => s.id == submissionId);
     if (idx != -1) {
       final s = _submissions[idx];
-      _submissions[idx] = Submission(
+      final gradedSub = Submission(
         id: s.id,
         activityId: s.activityId,
         studentId: s.studentId,
@@ -258,7 +293,11 @@ class ActivityProvider extends ChangeNotifier {
         feedback: feedback,
         fileName: s.fileName,
       );
+      _submissions[idx] = gradedSub;
       await _saveData();
+      if (FirestoreSyncService.isAvailable) {
+        await FirestoreSyncService.saveSubmission(gradedSub);
+      }
       notifyListeners();
     }
   }
@@ -267,7 +306,7 @@ class ActivityProvider extends ChangeNotifier {
     final idx = _submissions.indexWhere((s) => s.id == submissionId);
     if (idx != -1) {
       final s = _submissions[idx];
-      _submissions[idx] = Submission(
+      final missingSub = Submission(
         id: s.id,
         activityId: s.activityId,
         studentId: s.studentId,
@@ -278,7 +317,11 @@ class ActivityProvider extends ChangeNotifier {
         feedback: s.feedback,
         fileName: s.fileName,
       );
+      _submissions[idx] = missingSub;
       await _saveData();
+      if (FirestoreSyncService.isAvailable) {
+        await FirestoreSyncService.saveSubmission(missingSub);
+      }
       notifyListeners();
     }
   }
@@ -287,7 +330,103 @@ class ActivityProvider extends ChangeNotifier {
     _activities.removeWhere((a) => a.id == activityId);
     _submissions.removeWhere((s) => s.activityId == activityId);
     await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.deleteActivity(activityId);
+    }
     notifyListeners();
+  }
+
+  /// Real-time live synchronization for activities, submissions, and announcements.
+  void syncWithFirestore({
+    required String userId,
+    required bool isTeacher,
+    required List<String> classIds,
+  }) {
+    if (!FirestoreSyncService.isAvailable || classIds.isEmpty) return;
+
+    _activitiesSub?.cancel();
+    _submissionsSub?.cancel();
+    _announcementsSub?.cancel();
+
+    // Stream activities
+    _activitiesSub =
+        FirestoreSyncService.streamActivitiesForClasses(classIds).listen((remote) {
+      if (remote.isNotEmpty) {
+        bool changed = false;
+        for (final act in remote) {
+          final idx = _activities.indexWhere((a) => a.id == act.id);
+          if (idx != -1) {
+            _activities[idx] = act;
+            changed = true;
+          } else {
+            _activities.add(act);
+            changed = true;
+          }
+        }
+        if (changed) {
+          _saveData();
+          notifyListeners();
+        }
+      }
+    }, onError: (e) => debugPrint('Activities stream error: $e'));
+
+    // Stream submissions
+    final subStream = isTeacher
+        ? FirestoreSyncService.streamSubmissionsForActivities(
+            _activities.map((a) => a.id).toList())
+        : FirestoreSyncService.streamSubmissionsForStudent(userId);
+
+    _submissionsSub = subStream.listen((remote) {
+      if (remote.isNotEmpty) {
+        bool changed = false;
+        for (final sub in remote) {
+          final idx = _submissions.indexWhere((s) =>
+              s.id == sub.id ||
+              (s.activityId == sub.activityId && s.studentId == sub.studentId));
+          if (idx != -1) {
+            _submissions[idx] = sub;
+            changed = true;
+          } else {
+            _submissions.add(sub);
+            changed = true;
+          }
+        }
+        if (changed) {
+          _saveData();
+          notifyListeners();
+        }
+      }
+    }, onError: (e) => debugPrint('Submissions stream error: $e'));
+
+    // Stream announcements
+    _announcementsSub =
+        FirestoreSyncService.streamAnnouncementsForClasses(classIds).listen((remote) {
+      if (remote.isNotEmpty) {
+        bool changed = false;
+        for (final ann in remote) {
+          final idx = _announcements.indexWhere((a) => a.id == ann.id);
+          if (idx != -1) {
+            _announcements[idx] = ann;
+            changed = true;
+          } else {
+            _announcements.add(ann);
+            changed = true;
+          }
+        }
+        if (changed) {
+          _saveData();
+          notifyListeners();
+        }
+      }
+    }, onError: (e) => debugPrint('Announcements stream error: $e'));
+  }
+
+  @override
+  void dispose() {
+    _activitiesSub?.cancel();
+    _submissionsSub?.cancel();
+    _announcementsSub?.cancel();
+    super.dispose();
   }
 
   // ─── CSV Export ───────────────────────────────────────────────────────────────

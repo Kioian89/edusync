@@ -57,6 +57,19 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
 
+    // Start Firestore real-time sync after successful login
+    if (auth.currentUser != null) {
+      auth.startListeningToClasses();
+      final classIds = auth.classes.map((c) => c.id).toList();
+      if (classIds.isNotEmpty) {
+        activity.syncWithFirestore(
+          userId: auth.currentUser!.id,
+          isTeacher: auth.isTeacher,
+          classIds: classIds,
+        );
+      }
+    }
+
     if (!mounted) return;
     _navigateByRole(auth.currentUser!);
   }

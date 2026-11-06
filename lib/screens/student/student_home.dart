@@ -26,6 +26,23 @@ class _StudentHomeState extends State<StudentHome> {
   int _selectedIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      final activity = context.read<ActivityProvider>();
+      final cls = auth.studentClass();
+      if (auth.currentUser != null && cls != null) {
+        activity.syncWithFirestore(
+          userId: auth.currentUser!.id,
+          isTeacher: false,
+          classIds: [cls.id],
+        );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final actProvider = context.watch<ActivityProvider>();

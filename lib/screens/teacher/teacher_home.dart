@@ -35,8 +35,16 @@ class _TeacherHomeState extends State<TeacherHome> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
+      final activity = context.read<ActivityProvider>();
       if (auth.teacherClasses.isNotEmpty) {
         setState(() => _selectedClass = auth.teacherClasses.first);
+      }
+      if (auth.currentUser != null) {
+        activity.syncWithFirestore(
+          userId: auth.currentUser!.id,
+          isTeacher: true,
+          classIds: auth.teacherClasses.map((c) => c.id).toList(),
+        );
       }
     });
   }
