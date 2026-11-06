@@ -1,0 +1,990 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/activity_provider.dart';
+import '../../models/class_group.dart';
+import '../../models/activity.dart';
+import '../../models/submission.dart';
+import '../../models/user.dart';
+import '../../widgets/activity_card.dart';
+import '../../widgets/custom_bottom_nav.dart';
+import '../../widgets/sync_badge.dart';
+import '../../theme/app_theme.dart';
+import '../login_screen.dart';
+import 'activity_create_screen.dart';
+import 'activity_detail_screen.dart';
+import 'announcements_screen.dart';
+import 'class_management_screen.dart';
+import 'gemini_assistant_screen.dart';
+import 'quick_activity_sheet.dart';
+
+class TeacherHome extends StatefulWidget {
+  const TeacherHome({super.key});
+
+  @override
+  State<TeacherHome> createState() => _TeacherHomeState();
+}
+
+class _TeacherHomeState extends State<TeacherHome> {
+  int _selectedIndex = 0;
+  ClassGroup? _selectedClass;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.teacherClasses.isNotEmpty) {
+        setState(() => _selectedClass = auth.teacherClasses.first);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final activity = context.watch<ActivityProvider>();
+
+    final pages = [
+      _TeacherActivitiesView(
+        selectedClass: _selectedClass,
+        classes: auth.teacherClasses,
+        onClassSelected: (c) => setState(() => _selectedClass = c),
+        activityProvider: activity,
+        authProvider: auth,
+      ),
+      _TeacherGradebookView(
+        selectedClass: _selectedClass,
+        classes: auth.teacherClasses,
+        onClassSelected: (c) => setState(() => _selectedClass = c),
+        authProvider: auth,
+        activityProvider: activity,
+      ),
+      const GeminiAssistantScreen(),
+      _TeacherProfileView(authProvider: auth),
+    ];
+
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      body: pages[_selectedIndex],
+      bottomNavigationBar: CustomBottomNav(
+        currentIndex: _selectedIndex,
+        onTap: (i) => setState(() => _selectedIndex = i),
+        items: const [
+          CustomNavItem(
+            icon: Icons.grid_view_outlined,
+            selectedIcon: Icons.grid_view_rounded,
+            label: 'Home',
+          ),
+          CustomNavItem(
+            icon: Icons.pie_chart_outline_rounded,
+            selectedIcon: Icons.pie_chart_rounded,
+            label: 'Grades',
+          ),
+          CustomNavItem(
+            icon: Icons.auto_awesome_outlined,
+            selectedIcon: Icons.auto_awesome_rounded,
+            label: 'Gemini',
+          ),
+          CustomNavItem(
+            icon: Icons.person_outline_rounded,
+            selectedIcon: Icons.person_rounded,
+            label: 'Profile',
+          ),
+        ],
+      ),
+      floatingActionButton: _selectedIndex == 0
+          ? Container(
+              margin: const EdgeInsets.only(bottom: 70),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Quick Upload Button (Cyan-blue gradient)
+                  InkWell(
+                    onTap: _selectedClass == null
+                        ? null
+                        : () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => QuickActivitySheet(classGroup: _selectedClass!),
+                            );
+                          },
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.cyanGradient,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: AppTheme.floatingShadow,
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 6),
+                          Text(
+                            'Quick Upload',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // New Activity Button
+                  InkWell(
+                    onTap: _selectedClass == null
+                        ? null
+                        : () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => ActivityCreateScreen(classGroup: _selectedClass!),
+                            ));
+                          },
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: AppTheme.floatingShadow,
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 6),
+                          Text(
+                            'New Activity',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+class _TeacherActivitiesView extends StatefulWidget {
+  final ClassGroup? selectedClass;
+  final List<ClassGroup> classes;
+  final ValueChanged<ClassGroup> onClassSelected;
+  final ActivityProvider activityProvider;
+  final AuthProvider authProvider;
+
+  const _TeacherActivitiesView({
+    required this.selectedClass,
+    required this.classes,
+    required this.onClassSelected,
+    required this.activityProvider,
+    required this.authProvider,
+  });
+
+  @override
+  State<_TeacherActivitiesView> createState() => _TeacherActivitiesViewState();
+}
+
+class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedClass = widget.selectedClass;
+    final classes = widget.classes;
+    final onClassSelected = widget.onClassSelected;
+    final activityProvider = widget.activityProvider;
+    final authProvider = widget.authProvider;
+
+    final user = authProvider.currentUser;
+    final allActivities = selectedClass != null
+        ? activityProvider.activitiesForClass(selectedClass.id)
+        : <Activity>[];
+    final activities = _searchQuery.isEmpty
+        ? allActivities
+        : allActivities
+            .where((a) => a.title
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()))
+            .toList();
+    final students = selectedClass != null
+        ? authProvider.studentsInClass(selectedClass.id)
+        : [];
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top header avatar & greeting like reference UI
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: AppTheme.primaryGradient,
+                            boxShadow: AppTheme.subtlePillShadow,
+                          ),
+                          child: Center(
+                            child: Text(
+                              user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'T',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, ${user?.name ?? "Teacher"}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Text(
+                              'Teacher Dashboard',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.textMain,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Action pill buttons
+                    Row(
+                      children: [
+                        const SyncBadge(),
+                        const SizedBox(width: 8),
+                        _CircleIconButton(
+                          icon: Icons.campaign_rounded,
+                          tooltip: 'Announcements',
+                          onTap: selectedClass == null
+                              ? () {}
+                              : () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => AnnouncementsScreen(
+                                          classGroup: selectedClass),
+                                    ),
+                                  ),
+                        ),
+                        const SizedBox(width: 8),
+                        _CircleIconButton(
+                          icon: Icons.meeting_room_outlined,
+                          tooltip: 'Manage Classes',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const ClassManagementScreen()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Horizontal Class Selector Chips (matching reference UI pill filter)
+                if (classes.isNotEmpty)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: classes.map((c) {
+                        final isSel = selectedClass?.id == c.id;
+                        return GestureDetector(
+                          onTap: () => onClassSelected(c),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isSel ? AppTheme.textMain : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: AppTheme.cardShadow,
+                              border: Border.all(
+                                color: isSel ? AppTheme.textMain : AppTheme.borderLight,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.class_rounded,
+                                  size: 14,
+                                  color: isSel ? Colors.white : AppTheme.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  c.displayName,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                                    color: isSel ? Colors.white : AppTheme.textMain,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                const SizedBox(height: 14),
+
+                // Search Bar
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: AppTheme.cardShadow,
+                  ),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    decoration: InputDecoration(
+                      hintText: 'Search activities…',
+                      hintStyle: const TextStyle(
+                          color: AppTheme.textMuted, fontSize: 14),
+                      prefixIcon: const Icon(Icons.search_rounded,
+                          color: AppTheme.textSecondary, size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded,
+                                  size: 18, color: AppTheme.textSecondary),
+                              onPressed: () => setState(() => _searchQuery = ''),
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Blue Hero Banner Capsule (Like reference UI: "Total 25 Devices / Connect & Manage")
+                if (selectedClass != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: AppTheme.floatingShadow,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.auto_stories_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${selectedClass.subject} • ${selectedClass.section}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${students.length} Enrolled Students • ${activities.length} Total Activities',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Class Activities',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textMain,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Activity List
+        if (activities.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: AppTheme.cardShadow,
+                    ),
+                    child: const Icon(Icons.inbox_outlined, size: 36, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'No Activities Created Yet',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.textMain),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Tap + New Activity or Quick Upload to get started.',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, idx) {
+                final act = activities[idx];
+                final subs = activityProvider.submissionsForActivity(act.id);
+                final submittedCount = subs
+                    .where((s) =>
+                        s.status == SubmissionStatus.submitted ||
+                        s.status == SubmissionStatus.graded)
+                    .length;
+                return ActivityCard(
+                  activity: act,
+                  submittedCount: submittedCount,
+                  totalStudents: students.length,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ActivityDetailScreen(activity: act),
+                  )),
+                );
+              },
+              childCount: activities.length,
+            ),
+          ),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+      ],
+    );
+  }
+}
+
+class _TeacherGradebookView extends StatelessWidget {
+  final ClassGroup? selectedClass;
+  final List<ClassGroup> classes;
+  final ValueChanged<ClassGroup> onClassSelected;
+  final AuthProvider authProvider;
+  final ActivityProvider activityProvider;
+
+  const _TeacherGradebookView({
+    required this.selectedClass,
+    required this.classes,
+    required this.onClassSelected,
+    required this.authProvider,
+    required this.activityProvider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (selectedClass == null) {
+      return const Center(child: Text('Please select a class'));
+    }
+    final students = authProvider.studentsInClass(selectedClass!.id);
+    final activities = activityProvider.activitiesForClass(selectedClass!.id);
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Class Gradebook',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textMain,
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () async {
+                        if (selectedClass == null) return;
+                        final typedStudents = students.cast<User>();
+                        try {
+                          final path =
+                              await activityProvider.exportGradebookCsv(
+                            classId: selectedClass!.id,
+                            students: typedStudents,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'CSV saved:\n${path.split('/').last}'),
+                                backgroundColor: AppTheme.statusGraded,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Export failed: $e'),
+                                backgroundColor: AppTheme.statusMissing,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.statusGraded.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppTheme.statusGraded
+                                  .withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.download_rounded,
+                                size: 15, color: AppTheme.statusGraded),
+                            SizedBox(width: 5),
+                            Text('Export CSV',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.statusGraded)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Monitor student submissions and performances',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 18),
+                // Horizontal class pills
+                if (classes.isNotEmpty)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: classes.map((c) {
+                        final isSel = selectedClass?.id == c.id;
+                        return GestureDetector(
+                          onTap: () => onClassSelected(c),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isSel ? AppTheme.textMain : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: AppTheme.cardShadow,
+                              border: Border.all(
+                                color: isSel ? AppTheme.textMain : AppTheme.borderLight,
+                              ),
+                            ),
+                            child: Text(
+                              c.displayName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                                color: isSel ? Colors.white : AppTheme.textMain,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (students.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: AppTheme.cardShadow,
+                    ),
+                    child: const Icon(Icons.people_outline_rounded, size: 36, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'No Students Enrolled',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.textMain),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, idx) {
+                final student = students[idx];
+                final subs = activityProvider.submissionsForStudent(student.id);
+                final gradedSubs = subs.where((s) => s.grade != null).toList();
+                final totalEarned = gradedSubs.fold(0.0, (sum, s) => sum + (s.grade ?? 0));
+                final totalPossible = activities.fold(0.0, (sum, a) => sum + a.totalPoints);
+
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: AppTheme.cardShadow,
+                    border: Border.all(color: AppTheme.borderLight.withValues(alpha: 0.6)),
+                  ),
+                  child: ExpansionTile(
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: Text(
+                          student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
+                          style: const TextStyle(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      student.name,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppTheme.textMain),
+                    ),
+                    subtitle: Text(
+                      totalPossible > 0
+                          ? '${totalEarned.toInt()} / ${totalPossible.toInt()} Points Total'
+                          : 'No points posted',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                    trailing: totalPossible > 0
+                        ? _GradeBadge(earned: totalEarned, total: totalPossible)
+                        : null,
+                    children: activities.map((act) {
+                      Submission? sub;
+                      try {
+                        sub = subs.firstWhere((s) => s.activityId == act.id);
+                      } catch (_) {}
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                        title: Text(
+                          act.title,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textMain),
+                        ),
+                        subtitle: Text(
+                          act.typeLabel,
+                          style: TextStyle(fontSize: 11, color: act.typeColor, fontWeight: FontWeight.w700),
+                        ),
+                        trailing: sub?.grade != null
+                            ? Text(
+                                '${sub!.grade!.toInt()} / ${act.totalPoints.toInt()}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: AppTheme.statusGraded,
+                                ),
+                              )
+                            : Text(
+                                sub?.statusLabel ?? 'Pending',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: sub?.statusColor ?? AppTheme.textMuted,
+                                ),
+                              ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+              childCount: students.length,
+            ),
+          ),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+      ],
+    );
+  }
+}
+
+class _GradeBadge extends StatelessWidget {
+  final double earned;
+  final double total;
+  const _GradeBadge({required this.earned, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = total > 0 ? (earned / total) : 0.0;
+    final color = pct >= 0.9
+        ? AppTheme.statusGraded
+        : pct >= 0.75
+            ? AppTheme.primary
+            : pct >= 0.6
+                ? AppTheme.statusPending
+                : AppTheme.statusMissing;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        '${(pct * 100).toStringAsFixed(0)}%',
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+class _TeacherProfileView extends StatelessWidget {
+  final AuthProvider authProvider;
+  const _TeacherProfileView({required this.authProvider});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = authProvider.currentUser!;
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppTheme.primaryGradient,
+                      boxShadow: AppTheme.floatingShadow,
+                    ),
+                    child: Center(
+                      child: Text(
+                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'T',
+                        style: const TextStyle(
+                          fontSize: 38,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  user.name,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.textMain),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Text(
+                    'Instructor / Teacher',
+                    style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w800, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  user.email,
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 32),
+
+                // Quick stats box
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: AppTheme.cardShadow,
+                    border: Border.all(color: AppTheme.borderLight),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _statColumn('Active Classes', '${authProvider.teacherClasses.length}', Icons.class_rounded),
+                      Container(height: 40, width: 1, color: AppTheme.borderLight),
+                      _statColumn('Role Status', 'Verified', Icons.verified_user_rounded),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Sign out card button
+                InkWell(
+                  onTap: () async {
+                    await authProvider.logout();
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (_) => false,
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.statusMissing.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.statusMissing.withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.logout_rounded, color: AppTheme.statusMissing, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Sign Out Account',
+                          style: TextStyle(
+                            color: AppTheme.statusMissing,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statColumn(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: AppTheme.primary, size: 22),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.textMain)),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+      ],
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _CircleIconButton({required this.icon, required this.tooltip, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: AppTheme.cardShadow,
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: AppTheme.textMain, size: 20),
+        tooltip: tooltip,
+        onPressed: onTap,
+      ),
+    );
+  }
+}
