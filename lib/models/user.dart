@@ -14,7 +14,7 @@ class User {
     required this.id,
     required this.name,
     required this.email,
-    required this.password,
+    this.password = '',
     required this.role,
     this.classId,
   });
@@ -29,11 +29,14 @@ class User {
       };
 
   factory User.fromMap(Map<String, dynamic> map) => User(
-        id: map['id'],
-        name: map['name'],
-        email: map['email'],
-        password: map['password'],
-        role: UserRole.values.firstWhere((r) => r.name == map['role']),
+        id: map['id'] ?? '',
+        name: map['name'] ?? '',
+        email: map['email'] ?? '',
+        password: map['password'] ?? '',
+        role: UserRole.values.firstWhere(
+          (r) => r.name == map['role'],
+          orElse: () => UserRole.student,
+        ),
         classId: map['classId'],
       );
 

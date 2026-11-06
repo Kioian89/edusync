@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../models/user.dart';
 import '../models/class_group.dart';
+import '../services/firebase_auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
@@ -122,9 +124,89 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<String?> login(String email, String password) async {
+    final cleanEmail = email.trim();
+    final cleanPass = password;
+
+    // 1. Try Firebase Authentication first if available
+    if (FirebaseAuthService.isFirebaseAvailable) {
+      try {
+        final cred = await FirebaseAuthService.signInWithEmail(
+          email: cleanEmail,
+          password: cleanPass,
+        );
+
+        if (cred?.user != null) {
+          final fbUser = cred!.user!;
+          User? matchedUser;
+
+          try {
+            matchedUser = _users.firstWhere(
+              (u) =>
+                  u.id == fbUser.uid ||
+                  u.email.toLowerCase() == cleanEmail.toLowerCase(),
+            );
+          } catch (_) {
+            matchedUser = null;
+          }
+
+          if (matchedUser == null) {
+            // Check Firestore for remote profile
+            final profile =
+                await FirebaseAuthService.getUserProfile(fbUser.uid);
+            if (profile != null) {
+              matchedUser = User(
+                id: fbUser.uid,
+                name: profile['name'] ?? fbUser.displayName ?? 'EduSync User',
+                email: fbUser.email ?? cleanEmail,
+                role: UserRole.values.firstWhere(
+                  (r) => r.name == profile['role'],
+                  orElse: () => UserRole.student,
+                ),
+                classId: profile['classId'],
+              );
+            } else {
+              matchedUser = User(
+                id: fbUser.uid,
+                name: fbUser.displayName ??
+                    (cleanEmail.split('@').first),
+                email: fbUser.email ?? cleanEmail,
+                role: UserRole.student,
+              );
+            }
+            _users.add(matchedUser);
+            await _saveData();
+          }
+
+          _currentUser = matchedUser;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('currentUserId', matchedUser.id);
+          notifyListeners();
+          return null;
+        }
+      } on fb.FirebaseAuthException catch (e) {
+        // Fallback for pre-seeded offline demo accounts (teacher@edusync.com, etc.)
+        try {
+          final demoUser = _users.firstWhere((u) =>
+              u.email.toLowerCase() == cleanEmail.toLowerCase() &&
+              u.password == cleanPass);
+          _currentUser = demoUser;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('currentUserId', demoUser.id);
+          notifyListeners();
+          return null;
+        } catch (_) {
+          return FirebaseAuthService.getFriendlyErrorMessage(e);
+        }
+      } catch (e) {
+        debugPrint('Firebase login unexpected error: $e');
+      }
+    }
+
+    // 2. Local fallback if Firebase is not active or offline
     try {
-      final user = _users.firstWhere(
-          (u) => u.email.toLowerCase() == email.toLowerCase() && u.password == password);
+      final user = _users.firstWhere((u) =>
+          u.email.toLowerCase() == cleanEmail.toLowerCase() &&
+          u.password == cleanPass);
       _currentUser = user;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('currentUserId', user.id);
@@ -142,13 +224,45 @@ class AuthProvider extends ChangeNotifier {
     required UserRole role,
     String? classId,
   }) async {
-    final exists = _users.any((u) => u.email.toLowerCase() == email.toLowerCase());
+    final cleanEmail = email.trim();
+    final cleanName = name.trim();
+
+    final exists =
+        _users.any((u) => u.email.toLowerCase() == cleanEmail.toLowerCase());
     if (exists) return 'An account with this email already exists.';
 
+    String userId = _uuid.v4();
+
+    // 1. Register with Firebase Authentication if available
+    if (FirebaseAuthService.isFirebaseAvailable) {
+      try {
+        final cred = await FirebaseAuthService.registerWithEmail(
+          email: cleanEmail,
+          password: password,
+          displayName: cleanName,
+        );
+
+        if (cred?.user != null) {
+          userId = cred!.user!.uid;
+          await FirebaseAuthService.saveUserProfile(
+            uid: userId,
+            name: cleanName,
+            email: cleanEmail,
+            role: role.name,
+            classId: classId,
+          );
+        }
+      } on fb.FirebaseAuthException catch (e) {
+        return FirebaseAuthService.getFriendlyErrorMessage(e);
+      } catch (e) {
+        debugPrint('Firebase registration error: $e');
+      }
+    }
+
     final newUser = User(
-      id: _uuid.v4(),
-      name: name,
-      email: email,
+      id: userId,
+      name: cleanName,
+      email: cleanEmail,
       password: password,
       role: role,
       classId: classId,
@@ -247,7 +361,32 @@ class AuthProvider extends ChangeNotifier {
     return addStudentToClass(classId: classId, studentId: studentId);
   }
 
+  /// Send password reset link to user's email via Firebase Auth.
+  Future<String?> sendPasswordReset(String email) async {
+    final cleanEmail = email.trim();
+    if (cleanEmail.isEmpty) return 'Please provide an email address.';
+
+    if (FirebaseAuthService.isFirebaseAvailable) {
+      try {
+        await FirebaseAuthService.sendPasswordReset(cleanEmail);
+        return null;
+      } on fb.FirebaseAuthException catch (e) {
+        return FirebaseAuthService.getFriendlyErrorMessage(e);
+      } catch (e) {
+        return 'Failed to send password reset: $e';
+      }
+    }
+    return 'Firebase Authentication is not available.';
+  }
+
   Future<void> logout() async {
+    if (FirebaseAuthService.isFirebaseAvailable) {
+      try {
+        await FirebaseAuthService.signOut();
+      } catch (e) {
+        debugPrint('Firebase signOut warning: $e');
+      }
+    }
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('currentUserId');
