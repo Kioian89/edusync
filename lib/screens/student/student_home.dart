@@ -13,6 +13,7 @@ import '../login_screen.dart';
 import 'submit_activity_screen.dart';
 import 'grades_screen.dart';
 import 'student_announcements_screen.dart';
+import '../community_standards_screen.dart';
 
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key});
@@ -580,7 +581,60 @@ class _StudentProfileView extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
+
+                // Community Standards Link Card
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CommunityStandardsScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: AppTheme.cardShadow,
+                      border: Border.all(color: AppTheme.borderLight),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.gavel_rounded, color: AppTheme.primary, size: 20),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Community Standards & Code of Conduct',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textMain,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Academic integrity, respectful communication & safety',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
 
                 InkWell(
                   onTap: () async {
