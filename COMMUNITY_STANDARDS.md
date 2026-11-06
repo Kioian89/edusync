@@ -45,3 +45,4 @@ Maintainers and educators reserve the right to remove non-compliant content, rev
 ---
 
 *Thank you for helping us keep EduSync an empowering, secure, and modern digital classroom!*
+

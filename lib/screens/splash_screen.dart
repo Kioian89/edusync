@@ -6,6 +6,7 @@ import 'landing_screen.dart';
 import 'teacher/teacher_home.dart';
 import 'student/student_home.dart';
 import '../models/user.dart';
+import '../services/shorebird_update_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,6 +35,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _init() async {
+    // Check Shorebird over-the-air patches in background
+    ShorebirdUpdateService.downloadUpdateIfAvailable();
+
     final auth = context.read<AuthProvider>();
     final activity = context.read<ActivityProvider>();
     await auth.init();
