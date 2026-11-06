@@ -1,4 +1,4 @@
-package com.example.edusync
+package com.dian.edusync
 
 import io.flutter.embedding.android.FlutterActivity
 
