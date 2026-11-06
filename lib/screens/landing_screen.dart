@@ -81,15 +81,17 @@ class _LandingScreenState extends State<LandingScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: AppTheme.subtlePillShadow,
+                          border: Border.all(color: AppTheme.borderLight),
                         ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.school_rounded,
-                            size: 22,
-                            color: Colors.white,
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: Image.asset(
+                            'assets/images/app_icon.png',
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),

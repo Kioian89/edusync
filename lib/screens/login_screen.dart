@@ -91,18 +91,20 @@ class _LoginScreenState extends State<LoginScreen> {
               // Top circular icon container
               Center(
                 child: Container(
-                  width: 90,
-                  height: 90,
+                  width: 95,
+                  height: 95,
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
-                    boxShadow: AppTheme.floatingShadow,
+                    boxShadow: AppTheme.cardShadow,
+                    border: Border.all(color: AppTheme.borderLight),
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.school_rounded,
-                      size: 48,
-                      color: Colors.white,
+                  clipBehavior: Clip.antiAlias,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Image.asset(
+                      'assets/images/app_icon.png',
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
