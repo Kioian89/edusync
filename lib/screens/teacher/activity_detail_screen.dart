@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
 import '../../models/submission.dart';
 import '../../widgets/status_badge.dart';
+import '../../theme/app_theme.dart';
 import 'grade_entry_screen.dart';
 
 class ActivityDetailScreen extends StatelessWidget {
@@ -95,87 +96,93 @@ class ActivityDetailScreen extends StatelessWidget {
                 // Header
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  color: activity.typeColor.withOpacity(0.1),
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: activity.typeColor.withValues(alpha: 0.08),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                            horizontal: 12, vertical: 5),
                         decoration: BoxDecoration(
-                          color: activity.typeColor.withOpacity(0.2),
+                          color: activity.typeColor.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(activity.typeLabel,
                             style: TextStyle(
                                 color: activity.typeColor,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 fontSize: 12)),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Text(activity.title,
                           style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold)),
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.textMain)),
                       if (activity.description.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(activity.description,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant)),
+                                color: AppTheme.textSecondary,
+                                height: 1.4)),
                       ],
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       Row(
                         children: [
-                          Icon(Icons.schedule, size: 16,
+                          Icon(Icons.schedule_rounded, size: 16,
                               color: activity.isPastDeadline
-                                  ? Colors.red
-                                  : theme.colorScheme.onSurfaceVariant),
-                          const SizedBox(width: 4),
+                                  ? AppTheme.statusMissing
+                                  : AppTheme.textSecondary),
+                          const SizedBox(width: 5),
                           Text(
                             'Due ${DateFormat('MMM d, yyyy • h:mm a').format(activity.deadline)}',
                             style: TextStyle(
                                 fontSize: 13,
+                                fontWeight: activity.isPastDeadline ? FontWeight.w800 : FontWeight.w600,
                                 color: activity.isPastDeadline
-                                    ? Colors.red
-                                    : theme.colorScheme.onSurfaceVariant),
+                                    ? AppTheme.statusMissing
+                                    : AppTheme.textSecondary),
                           ),
                           const SizedBox(width: 16),
-                          Icon(Icons.star_border, size: 16,
-                              color: theme.colorScheme.primary),
+                          const Icon(Icons.star_rounded, size: 16,
+                              color: AppTheme.primary),
                           const SizedBox(width: 4),
                           Text('${activity.totalPoints.toInt()} pts',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 13,
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w600)),
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w800)),
                         ],
                       ),
                       if (activity.teacherAnswerKey != null) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                            color: AppTheme.accentOrbit.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppTheme.accentOrbit.withValues(alpha: 0.3)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Row(
                                 children: [
-                                  Icon(Icons.key, size: 16, color: Colors.amber),
-                                  SizedBox(width: 6),
+                                  Icon(Icons.key_rounded, size: 16, color: AppTheme.accentOrbit),
+                                  SizedBox(width: 8),
                                   Text(
                                     'Teacher Answer Key & Scoring Guide (AI Generated):',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.brown),
+                                    style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.accentOrbit, fontSize: 12),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 8),
                               Text(
                                 activity.teacherAnswerKey!,
-                                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                style: const TextStyle(fontSize: 12, color: AppTheme.textMain, height: 1.4),
                               ),
                             ],
                           ),
@@ -323,8 +330,9 @@ class _StatChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [

@@ -121,6 +121,13 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
   String _searchQuery = '';
   static const _filters = ['All', 'Pending', 'Submitted', 'Graded', 'Missing'];
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
   List<Activity> _filtered() {
     final status = [
       null,
@@ -197,7 +204,7 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Hello, ${user.name.split(" ").first}',
+                              '${_getGreeting()}, ${user.name.split(" ").first}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 color: AppTheme.textSecondary,
@@ -273,7 +280,7 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
                   decoration: BoxDecoration(
                     gradient: AppTheme.heroCardGradient,
                     borderRadius: BorderRadius.circular(28),
-                    boxShadow: AppTheme.floatingShadow,
+                    boxShadow: AppTheme.heroShadow,
                   ),
                   child: Row(
                     children: [
@@ -378,11 +385,11 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                           decoration: BoxDecoration(
-                            color: isSel ? AppTheme.textMain : Colors.white,
+                            color: isSel ? AppTheme.primary : Colors.white,
                             borderRadius: BorderRadius.circular(22),
                             boxShadow: AppTheme.cardShadow,
                             border: Border.all(
-                              color: isSel ? AppTheme.textMain : AppTheme.borderLight,
+                              color: isSel ? AppTheme.primary : AppTheme.borderLight,
                             ),
                           ),
                           child: Text(

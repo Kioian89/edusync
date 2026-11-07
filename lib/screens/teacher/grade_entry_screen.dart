@@ -4,6 +4,7 @@ import '../../providers/activity_provider.dart';
 import '../../models/activity.dart';
 import '../../models/submission.dart';
 import '../../widgets/status_badge.dart';
+import '../../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 
 class GradeEntryScreen extends StatefulWidget {
@@ -195,33 +196,33 @@ class _GradeEntryScreenState extends State<GradeEntryScreen> {
             if (sub.studentAnswerSheet != null && sub.studentAnswerSheet!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  color: AppTheme.primarySubtle,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.description, size: 16, color: Colors.blue),
+                        Icon(Icons.description_rounded, size: 16, color: AppTheme.primary),
                         SizedBox(width: 6),
                         Text(
                           'Student Filled In-App Answer Sheet:',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.borderLight),
                       ),
                       child: Text(
                         sub.studentAnswerSheet!,
@@ -235,18 +236,18 @@ class _GradeEntryScreenState extends State<GradeEntryScreen> {
             if (act.teacherAnswerKey != null) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                  color: AppTheme.accentOrbit.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.accentOrbit.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.key, size: 16, color: Colors.amber),
+                        Icon(Icons.key_rounded, size: 16, color: AppTheme.accentOrbit),
                         SizedBox(width: 6),
                         Text(
                           'AI Generated Answer Key & Rubric Reference:',

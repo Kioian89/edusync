@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
 import '../../models/class_group.dart';
 import '../../services/ai_activity_helper.dart';
+import '../../theme/app_theme.dart';
 
 class QuickActivitySheet extends StatefulWidget {
   final ClassGroup classGroup;
@@ -167,10 +168,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.15),
+                    color: AppTheme.primarySubtle,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.menu_book_rounded, color: Colors.teal, size: 24),
+                  child: const Icon(Icons.menu_book_rounded, color: AppTheme.primary, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -206,10 +207,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.05),
+                  color: AppTheme.primary.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: AppTheme.primary.withValues(alpha: 0.25),
                     style: BorderStyle.solid,
                     width: 1.5,
                   ),
@@ -322,12 +323,12 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: _useAiAssistant
-                    ? Colors.indigo.withOpacity(0.08)
-                    : theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                    ? AppTheme.primarySubtle
+                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: _useAiAssistant
-                      ? Colors.indigo.withOpacity(0.3)
+                      ? AppTheme.primary.withValues(alpha: 0.3)
                       : Colors.transparent,
                 ),
               ),

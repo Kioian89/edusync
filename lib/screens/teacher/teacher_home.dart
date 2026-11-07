@@ -210,6 +210,14 @@ class _TeacherActivitiesView extends StatefulWidget {
 
 class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
   String _searchQuery = '';
+  ActivityType? _selectedTypeFilter;
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -223,16 +231,21 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
     final allActivities = selectedClass != null
         ? activityProvider.activitiesForClass(selectedClass.id)
         : <Activity>[];
-    final activities = _searchQuery.isEmpty
-        ? allActivities
-        : allActivities
-            .where((a) => a.title
-                .toLowerCase()
-                .contains(_searchQuery.toLowerCase()))
-            .toList();
+    final activities = allActivities.where((a) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          a.title.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesType = _selectedTypeFilter == null || a.type == _selectedTypeFilter;
+      return matchesSearch && matchesType;
+    }).toList();
+
     final students = selectedClass != null
         ? authProvider.studentsInClass(selectedClass.id)
         : [];
+
+    final pendingGradingCount = allActivities.fold<int>(0, (sum, a) {
+      final subs = activityProvider.submissionsForActivity(a.id);
+      return sum + subs.where((s) => s.status == SubmissionStatus.submitted).length;
+    });
 
     return CustomScrollView(
       slivers: [
@@ -249,8 +262,8 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                     Row(
                       children: [
                         Container(
-                          width: 46,
-                          height: 46,
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: AppTheme.primaryGradient,
@@ -268,7 +281,7 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Hello, ${user?.name ?? "Teacher"}',
+                              '${_getGreeting()}, ${user?.name.split(" ").first ?? "Teacher"}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 color: AppTheme.textSecondary,
@@ -334,11 +347,11 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                             margin: const EdgeInsets.only(right: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: isSel ? AppTheme.textMain : Colors.white,
+                              color: isSel ? AppTheme.primary : Colors.white,
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: AppTheme.cardShadow,
                               border: Border.all(
-                                color: isSel ? AppTheme.textMain : AppTheme.borderLight,
+                                color: isSel ? AppTheme.primary : AppTheme.borderLight,
                               ),
                             ),
                             child: Row(
@@ -373,6 +386,7 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: AppTheme.cardShadow,
+                    border: Border.all(color: AppTheme.borderLight),
                   ),
                   child: TextField(
                     onChanged: (v) => setState(() => _searchQuery = v),
@@ -398,67 +412,136 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
 
                 const SizedBox(height: 14),
 
-                // Blue Hero Banner Capsule (Like reference UI: "Total 25 Devices / Connect & Manage")
+                // Activity Type Filter Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildTypeFilterChip(null, 'All Types', Icons.dashboard_outlined),
+                      _buildTypeFilterChip(ActivityType.module, 'Modules', Icons.menu_book_rounded),
+                      _buildTypeFilterChip(ActivityType.assignment, 'Assignments', Icons.assignment_rounded),
+                      _buildTypeFilterChip(ActivityType.quiz, 'Quizzes', Icons.help_outline_rounded),
+                      _buildTypeFilterChip(ActivityType.project, 'Projects', Icons.science_rounded),
+                      _buildTypeFilterChip(ActivityType.exam, 'Exams', Icons.description_rounded),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Royal Purple Hero Banner Capsule
                 if (selectedClass != null)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
+                      gradient: AppTheme.heroCardGradient,
                       borderRadius: BorderRadius.circular(28),
-                      boxShadow: AppTheme.floatingShadow,
+                      boxShadow: AppTheme.heroShadow,
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.auto_stories_rounded,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${selectedClass.subject} • ${selectedClass.section}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16,
-                                ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${students.length} Enrolled Students • ${activities.length} Total Activities',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              child: const Icon(
+                                Icons.auto_stories_rounded,
+                                color: Colors.white,
+                                size: 24,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${selectedClass.subject} • ${selectedClass.section}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${students.length} Enrolled Students • ${allActivities.length} Total Activities',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.85),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+                        if (pendingGradingCount > 0) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentOrbit.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppTheme.accentOrbit.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.assignment_late_rounded,
+                                  color: AppTheme.accentOrbit,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '$pendingGradingCount submission(s) pending your review & grading',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Class Activities',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textMain,
-                  ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Class Activities',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textMain,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      '${activities.length} visible',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -523,6 +606,77 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
         const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
       ],
     );
+  }
+
+  Widget _buildTypeFilterChip(ActivityType? type, String label, IconData icon) {
+    final isSelected = _selectedTypeFilter == type;
+    final color = type != null ? _getTypeColor(type) : AppTheme.primary;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedTypeFilter = isSelected ? null : type;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? color : AppTheme.borderLight,
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.28),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  )
+                ]
+              : AppTheme.cardShadow,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? Colors.white : AppTheme.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? Colors.white : AppTheme.textMain,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getTypeColor(ActivityType type) {
+    switch (type) {
+      case ActivityType.module:
+        return const Color(0xFF0284C7);
+      case ActivityType.assignment:
+        return const Color(0xFF2563EB);
+      case ActivityType.quiz:
+        return const Color(0xFFD97706);
+      case ActivityType.project:
+        return const Color(0xFF7C3AED);
+      case ActivityType.exam:
+        return const Color(0xFFDC2626);
+      case ActivityType.seatwork:
+        return const Color(0xFF059669);
+    }
   }
 }
 

@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
 import '../../models/class_group.dart';
 import '../../services/ai_activity_helper.dart';
+import '../../theme/app_theme.dart';
 
 class ActivityCreateScreen extends StatefulWidget {
   final ClassGroup classGroup;
@@ -173,18 +174,19 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.primarySubtle,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.class_outlined,
-                        color: theme.colorScheme.secondary, size: 18),
+                    const Icon(Icons.class_rounded,
+                        color: AppTheme.primary, size: 18),
                     const SizedBox(width: 8),
                     Text(widget.classGroup.displayName,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.secondary)),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary)),
                   ],
                 ),
               ),
@@ -202,18 +204,20 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                     label: Text(act.typeLabel),
                     avatar: Icon(Icons.circle, size: 12, color: act.typeColor),
                     onSelected: (_) => setState(() => _type = t),
-                    selectedColor: act.typeColor.withOpacity(0.2),
+                    selectedColor: act.typeColor.withValues(alpha: 0.2),
                     checkmarkColor: act.typeColor,
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 12),
               // AI Generator Trigger Button
               OutlinedButton.icon(
                 onPressed: _generateWithAi,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.indigo,
-                  side: const BorderSide(color: Colors.indigo, width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 icon: const Icon(Icons.auto_awesome_rounded),
                 label: const Text(
@@ -224,20 +228,20 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
               if (_answerSheetTemplate != null) ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.withOpacity(0.3)),
+                    color: AppTheme.accentEmerald.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.accentEmerald.withValues(alpha: 0.3)),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.verified_rounded, size: 16, color: Colors.green),
+                      Icon(Icons.verified_rounded, size: 16, color: AppTheme.accentEmerald),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'AI Activity questions, student answer sheet & rubric attached!',
-                          style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600),
+                          style: TextStyle(fontSize: 12, color: AppTheme.accentEmerald, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],

@@ -49,9 +49,9 @@ class GradesScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: AppTheme.heroCardGradient,
                     borderRadius: BorderRadius.circular(30),
-                    boxShadow: AppTheme.floatingShadow,
+                    boxShadow: AppTheme.heroShadow,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

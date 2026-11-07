@@ -25,14 +25,21 @@ class ActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
     final isPast = activity.isPastDeadline;
+    final now = DateTime.now();
+    final isDueSoon = !isPast && activity.deadline.difference(now).inHours <= 24;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppTheme.cardShadow,
-        border: Border.all(color: AppTheme.borderLight.withValues(alpha: 0.6), width: 1.2),
+        border: Border.all(
+          color: isDueSoon
+              ? AppTheme.accentOrbit.withValues(alpha: 0.35)
+              : AppTheme.borderLight,
+          width: isDueSoon ? 1.5 : 1.0,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -52,7 +59,7 @@ class ActivityCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: activity.typeColor.withValues(alpha: 0.1),
+                        color: activity.typeColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
@@ -64,7 +71,7 @@ class ActivityCard extends StatelessWidget {
                             activity.typeLabel,
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                               color: activity.typeColor,
                               letterSpacing: 0.3,
                             ),
@@ -87,6 +94,7 @@ class ActivityCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: AppTheme.textMain,
                     height: 1.25,
+                    letterSpacing: -0.2,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -111,31 +119,37 @@ class ActivityCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceSoft,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.borderLight.withValues(alpha: 0.4)),
+                    border: Border.all(color: AppTheme.borderLight),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.schedule_rounded,
                         size: 15,
-                        color: isPast ? AppTheme.statusMissing : AppTheme.textSecondary,
+                        color: isPast
+                            ? AppTheme.statusMissing
+                            : (isDueSoon ? AppTheme.accentOrbit : AppTheme.textSecondary),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Due ${dateFormat.format(activity.deadline)}',
+                          isDueSoon
+                              ? 'Due Today • ${DateFormat('h:mm a').format(activity.deadline)}'
+                              : 'Due ${dateFormat.format(activity.deadline)}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isPast ? AppTheme.statusMissing : AppTheme.textSecondary,
-                            fontWeight: isPast ? FontWeight.w700 : FontWeight.w500,
+                            color: isPast
+                                ? AppTheme.statusMissing
+                                : (isDueSoon ? AppTheme.accentOrbit : AppTheme.textSecondary),
+                            fontWeight: isPast || isDueSoon ? FontWeight.w800 : FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          color: AppTheme.primarySubtle,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -160,7 +174,7 @@ class ActivityCard extends StatelessWidget {
                         child: Text(
                           activity.attachments.length == 1
                               ? activity.attachments.first
-                              : '${activity.attachments.length} attached documents',
+                              : '${activity.attachments.length} attached files',
                           style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -178,29 +192,31 @@ class ActivityCard extends StatelessWidget {
 
   Widget _teacherProgress(BuildContext context) {
     final pct = totalStudents! > 0 ? submittedCount! / totalStudents! : 0.0;
+    final isComplete = pct == 1.0;
+    final color = isComplete ? AppTheme.statusGraded : AppTheme.primary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: pct == 1.0 
-            ? AppTheme.statusGraded.withValues(alpha: 0.12)
-            : AppTheme.primary.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.people_alt_rounded,
+            isComplete ? Icons.check_circle_rounded : Icons.people_alt_rounded,
             size: 13,
-            color: pct == 1.0 ? AppTheme.statusGraded : AppTheme.primary,
+            color: color,
           ),
           const SizedBox(width: 5),
           Text(
             '$submittedCount/$totalStudents Turn-ins',
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: pct == 1.0 ? AppTheme.statusGraded : AppTheme.primary,
+              fontWeight: FontWeight.w800,
+              color: color,
             ),
           ),
         ],
