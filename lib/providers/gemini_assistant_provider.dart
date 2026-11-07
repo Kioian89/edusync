@@ -43,8 +43,13 @@ class GeminiAssistantProvider extends ChangeNotifier {
   final List<GeminiMessage> _messages = [];
   String? _currentUserId;
 
-  /// Effective API key: Personal key takes precedence over central Firebase key
-  String? get apiKey => _personalApiKey ?? _firebaseApiKey;
+  static const String compileTimeApiKey = String.fromEnvironment('GEMINI_API_KEY');
+
+  /// Effective API key: Personal key takes precedence over central Firebase key, then compile-time key
+  String? get apiKey =>
+      _personalApiKey ??
+      _firebaseApiKey ??
+      (compileTimeApiKey.isNotEmpty ? compileTimeApiKey : null);
   bool get hasPersonalKey => _personalApiKey != null && _personalApiKey!.trim().isNotEmpty;
   bool get isFirebaseAiConnected =>
       FirebaseAiService.isAvailable ||
