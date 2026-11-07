@@ -180,6 +180,9 @@ class AuthProvider extends ChangeNotifier {
                   orElse: () => UserRole.student,
                 ),
                 classId: profile['classId'],
+                enrolledClassIds: profile['enrolledClassIds'] != null
+                    ? List<String>.from(profile['enrolledClassIds'])
+                    : (profile['classId'] != null ? [profile['classId']] : []),
               );
             } else {
               matchedUser = User(
@@ -270,6 +273,7 @@ class AuthProvider extends ChangeNotifier {
             email: cleanEmail,
             role: role.name,
             classId: classId,
+            enrolledClassIds: classId != null ? [classId] : [],
           );
         }
       } on fb.FirebaseAuthException catch (e) {

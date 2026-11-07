@@ -102,19 +102,25 @@ class FirebaseAuthService {
     required String email,
     required String role,
     String? classId,
+    List<String>? enrolledClassIds,
   }) async {
     final db = firestore;
     if (db == null) return;
 
     try {
-      await db.collection('users').doc(uid).set({
+      final payload = <String, dynamic>{
         'id': uid,
         'name': name.trim(),
         'email': email.trim().toLowerCase(),
         'role': role,
         'classId': classId,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      };
+      if (enrolledClassIds != null) {
+        payload['enrolledClassIds'] = enrolledClassIds;
+      }
+
+      await db.collection('users').doc(uid).set(payload, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Firestore saveUserProfile warning: $e');
     }
