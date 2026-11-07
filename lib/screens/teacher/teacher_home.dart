@@ -10,14 +10,14 @@ import '../../widgets/activity_card.dart';
 import '../../widgets/custom_bottom_nav.dart';
 import '../../widgets/sync_badge.dart';
 import '../../theme/app_theme.dart';
-import '../login_screen.dart';
+import '../auth/login_screen.dart';
 import 'activity_create_screen.dart';
 import 'activity_detail_screen.dart';
 import 'announcements_screen.dart';
 import 'class_management_screen.dart';
 import 'gemini_assistant_screen.dart';
 import 'quick_activity_sheet.dart';
-import '../community_standards_screen.dart';
+import '../common/community_standards_screen.dart';
 
 class TeacherHome extends StatefulWidget {
   const TeacherHome({super.key});

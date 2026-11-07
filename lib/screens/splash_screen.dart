@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/activity_provider.dart';
-import 'landing_screen.dart';
+import 'auth/landing_screen.dart';
 import 'teacher/teacher_home.dart';
 import 'student/student_home.dart';
 import '../models/user.dart';

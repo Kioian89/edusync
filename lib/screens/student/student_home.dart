@@ -9,11 +9,11 @@ import '../../widgets/custom_bottom_nav.dart';
 import '../../widgets/sync_badge.dart';
 import '../../widgets/student_qr_dialog.dart';
 import '../../theme/app_theme.dart';
-import '../login_screen.dart';
+import '../auth/login_screen.dart';
 import 'submit_activity_screen.dart';
 import 'grades_screen.dart';
 import 'student_announcements_screen.dart';
-import '../community_standards_screen.dart';
+import '../common/community_standards_screen.dart';
 
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key});
