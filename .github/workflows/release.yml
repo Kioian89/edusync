@@ -39,6 +39,11 @@ jobs:
       - name: Make Gradlew Executable
         run: chmod +x android/gradlew
 
+      - name: Ensure Android Platforms
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "platforms;android-34" || true
+
       - name: Install Dependencies
         run: flutter pub get
 
@@ -47,16 +52,16 @@ jobs:
           set -o pipefail
           flutter build apk --release 2>&1 | tee build_log.txt
 
-      - name: Capture Failure Log
+      - name: Upload Failure Log
         if: failure()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B ci-logs
-          tail -n 500 build_log.txt > error.log
-          git add error.log
-          git commit -m "CI Error log [skip ci]" || true
-          git push -f origin ci-logs || true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
+          name: Build Log - ${{ github.event.inputs.version_tag || github.ref_name }}
+          files: build_log.txt
+          body: "Release build failed on GitHub Actions runner. Build log attached."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
