@@ -40,6 +40,7 @@ build_log.txt
 # Symbolication & Obfuscation
 app.*.symbols
 app.*.map.json
+symbols/
 
 # Android Studio will place build artifacts here
 /android/app/debug

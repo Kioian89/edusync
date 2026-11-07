@@ -54,7 +54,7 @@ jobs:
           if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
             DART_DEFINES="--dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
           fi
-          flutter build apk --release $DART_DEFINES 2>&1 | tee build_log.txt
+          flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
 
       - name: Upload Failure Log
         if: failure()
