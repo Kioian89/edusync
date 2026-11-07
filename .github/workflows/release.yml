@@ -66,6 +66,7 @@ jobs:
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
         run: |
+          set -o pipefail
           DART_DEFINES=""
           if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
             DART_DEFINES="--dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
@@ -73,7 +74,7 @@ jobs:
           shorebird patch android \
             --allow-asset-diffs \
             --allow-native-diffs \
-            $DART_DEFINES
+            $DART_DEFINES 2>&1 | tee build_log.txt
 
       - name: Build APK (Release / Shorebird)
         if: "${{ github.event.inputs.build_type != 'patch' }}"
