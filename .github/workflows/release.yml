@@ -9,7 +9,15 @@ on:
       version_tag:
         description: 'Release Tag'
         required: false
-        default: 'v1.0.3'
+        default: 'v1.4.3'
+      build_type:
+        description: 'Build Type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - patch
 
 jobs:
   build-and-release:
@@ -20,15 +28,21 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Shorebird
+        uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -47,18 +61,41 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Release APK
+      - name: Publish Shorebird OTA Patch
+        if: "${{ github.event.inputs.build_type == 'patch' }}"
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: |
+          DART_DEFINES=""
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            DART_DEFINES="--dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
+          fi
+          shorebird patch android \
+            --allow-asset-diffs \
+            --allow-native-diffs \
+            $DART_DEFINES
+
+      - name: Build APK (Release / Shorebird)
+        if: "${{ github.event.inputs.build_type != 'patch' }}"
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
         run: |
           set -o pipefail
           DART_DEFINES=""
           if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
             DART_DEFINES="--dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
           fi
-          flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+          if [ -n "$SHOREBIRD_TOKEN" ]; then
+            echo "Building Shorebird base release APK..."
+            shorebird release android --artifact=apk $DART_DEFINES --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+          else
+            echo "SHOREBIRD_TOKEN not set, building standard Flutter release APK..."
+            flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+          fi
 
       - name: Upload Failure Log
         if: failure()
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
           name: Build Log - ${{ github.event.inputs.version_tag || github.ref_name }}
@@ -68,7 +105,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v3
+        if: "${{ github.event.inputs.build_type != 'patch' }}"
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
           name: Release ${{ github.event.inputs.version_tag || github.ref_name }}
