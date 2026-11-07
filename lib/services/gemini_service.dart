@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
+import 'firebase_ai_service.dart';
 
 class GeminiService {
   static const String defaultModelName = 'gemini-1.5-flash';
@@ -15,6 +16,19 @@ class GeminiService {
     String? systemInstruction,
     String modelName = defaultModelName,
   }) async {
+    // 0. Primary: Try Firebase AI Logic SDK first if Firebase is available
+    if (FirebaseAiService.isAvailable) {
+      final fbResponse = await FirebaseAiService.generateWithFirebaseAI(
+        prompt: prompt,
+        chatHistory: chatHistory,
+        systemInstruction: systemInstruction,
+        modelName: modelName,
+      );
+      if (fbResponse != null && fbResponse.isNotEmpty) {
+        return fbResponse;
+      }
+    }
+
     final cleanKey = apiKey.trim();
     if (cleanKey.isEmpty) {
       throw Exception('Gemini API Key is missing. Please configure your key in settings or Firebase.');

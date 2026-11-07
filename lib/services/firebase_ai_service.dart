@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/foundation.dart';
 
-/// Service connecting Gemini AI with Cloud Firestore backend.
-/// Manages remote Gemini API configuration, shared system keys,
-/// and cloud synchronization of AI chat conversations.
+/// Service connecting Gemini AI with the official Firebase AI Logic SDK
+/// and Cloud Firestore backend.
 class FirebaseAiService {
   static bool get isAvailable {
     try {
@@ -24,21 +24,72 @@ class FirebaseAiService {
     }
   }
 
+  /// Gets a GenerativeModel instance powered by the Firebase AI Logic SDK.
+  /// Automatically authenticates through Firebase project infrastructure.
+  static GenerativeModel? getFirebaseAiModel({
+    String modelName = 'gemini-1.5-flash',
+    String? systemInstruction,
+  }) {
+    if (!isAvailable) return null;
+    try {
+      final ai = FirebaseAI.googleAI();
+      return ai.generativeModel(
+        model: modelName,
+        systemInstruction: systemInstruction != null && systemInstruction.isNotEmpty
+            ? Content.system(systemInstruction)
+            : null,
+        generationConfig: GenerationConfig(
+          temperature: 0.7,
+          maxOutputTokens: 1500,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Firebase AI Logic SDK model init: $e');
+      return null;
+    }
+  }
+
+  /// Generates a response directly using the Firebase AI Logic SDK.
+  static Future<String?> generateWithFirebaseAI({
+    required String prompt,
+    List<Map<String, String>> chatHistory = const [],
+    String? systemInstruction,
+    String modelName = 'gemini-1.5-flash',
+  }) async {
+    final model = getFirebaseAiModel(
+      modelName: modelName,
+      systemInstruction: systemInstruction,
+    );
+    if (model == null) return null;
+
+    try {
+      final historyContent = chatHistory.map((turn) {
+        final isModel = turn['role'] == 'assistant' || turn['role'] == 'model';
+        return isModel
+            ? Content.model([TextPart(turn['text'] ?? '')])
+            : Content.text(turn['text'] ?? '');
+      }).toList();
+
+      final chat = model.startChat(history: historyContent);
+      final response = await chat.sendMessage(Content.text(prompt));
+      return response.text;
+    } catch (e) {
+      debugPrint('Firebase AI Logic SDK generation failed, will try key fallback: $e');
+      return null;
+    }
+  }
+
   /// Fetches shared Gemini AI configuration stored in Firebase Cloud Firestore.
-  /// This allows school/organization administrators to configure a central
-  /// Gemini model and API key so teachers and students don't have to enter one manually.
   static Future<Map<String, dynamic>?> fetchFirebaseGeminiConfig() async {
     final db = _db;
     if (db == null) return null;
 
     try {
-      // 1. Check config/gemini document
       final doc = await db.collection('config').doc('gemini').get();
       if (doc.exists && doc.data() != null) {
         return doc.data();
       }
 
-      // 2. Check system/ai fallback document
       final fallbackDoc = await db.collection('system').doc('ai').get();
       if (fallbackDoc.exists && fallbackDoc.data() != null) {
         return fallbackDoc.data();

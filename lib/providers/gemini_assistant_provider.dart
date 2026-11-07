@@ -46,8 +46,12 @@ class GeminiAssistantProvider extends ChangeNotifier {
   /// Effective API key: Personal key takes precedence over central Firebase key
   String? get apiKey => _personalApiKey ?? _firebaseApiKey;
   bool get hasPersonalKey => _personalApiKey != null && _personalApiKey!.trim().isNotEmpty;
-  bool get isFirebaseAiConnected => _firebaseApiKey != null && _firebaseApiKey!.trim().isNotEmpty;
-  bool get hasKey => apiKey != null && apiKey!.trim().isNotEmpty;
+  bool get isFirebaseAiConnected =>
+      FirebaseAiService.isAvailable ||
+      (_firebaseApiKey != null && _firebaseApiKey!.trim().isNotEmpty);
+  bool get hasKey =>
+      (apiKey != null && apiKey!.trim().isNotEmpty) ||
+      FirebaseAiService.isAvailable;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<GeminiMessage> get messages => _messages;
@@ -139,8 +143,8 @@ class GeminiAssistantProvider extends ChangeNotifier {
   }
 
   Future<void> sendMessage(String text, {String? classContext}) async {
-    final effectiveKey = apiKey;
-    if (effectiveKey == null || effectiveKey.trim().isEmpty || text.trim().isEmpty) return;
+    final effectiveKey = apiKey ?? '';
+    if (!hasKey || text.trim().isEmpty) return;
 
     final userMsg = GeminiMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
