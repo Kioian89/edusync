@@ -14,8 +14,10 @@ class StudentQrDialog extends StatelessWidget {
     final payload = jsonEncode({
       'type': 'edusync_student',
       'studentId': student.id,
+      'id': student.id,
       'name': student.name,
       'email': student.email,
+      'role': student.role.name,
     });
 
     return Dialog(

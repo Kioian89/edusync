@@ -27,12 +27,14 @@ class ClassGroup {
       };
 
   factory ClassGroup.fromMap(Map<String, dynamic> map) => ClassGroup(
-        id: map['id'],
-        name: map['name'],
-        subject: map['subject'],
-        section: map['section'],
-        teacherId: map['teacherId'],
-        studentIds: List<String>.from(map['studentIds'] ?? []),
+        id: map['id']?.toString() ?? map['classId']?.toString() ?? '',
+        name: map['name']?.toString() ?? map['subject']?.toString() ?? '',
+        subject: map['subject']?.toString() ?? map['name']?.toString() ?? '',
+        section: map['section']?.toString() ?? '',
+        teacherId: map['teacherId']?.toString() ?? '',
+        studentIds: map['studentIds'] != null
+            ? List<String>.from(map['studentIds'])
+            : <String>[],
       );
 }
 

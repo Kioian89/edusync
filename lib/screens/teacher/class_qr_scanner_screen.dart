@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../../models/class_group.dart';
+import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../theme/app_theme.dart';
@@ -19,9 +20,9 @@ class _ClassQrScannerScreenState extends State<ClassQrScannerScreen> {
   final MobileScannerController _scannerController = MobileScannerController(
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
+    formats: const [BarcodeFormat.qrCode],
   );
   bool _isProcessing = false;
-  String? _lastScanned;
 
   @override
   void dispose() {
@@ -34,12 +35,11 @@ class _ClassQrScannerScreenState extends State<ClassQrScannerScreen> {
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
 
-    final raw = barcodes.first.rawValue;
-    if (raw == null || raw.isEmpty || raw == _lastScanned) return;
+    final raw = barcodes.first.rawValue ?? barcodes.first.displayValue;
+    if (raw == null || raw.trim().isEmpty) return;
 
     setState(() {
       _isProcessing = true;
-      _lastScanned = raw;
     });
 
     await _processPayload(raw);
@@ -53,6 +53,8 @@ class _ClassQrScannerScreenState extends State<ClassQrScannerScreen> {
 
   Future<void> _processPayload(String raw) async {
     String studentId = raw.trim();
+    String? studentName;
+    String? studentEmail;
 
     // Support JSON format payload if present
     if (studentId.startsWith('{') && studentId.endsWith('}')) {
@@ -63,11 +65,33 @@ class _ClassQrScannerScreenState extends State<ClassQrScannerScreen> {
         } else if (decoded.containsKey('id')) {
           studentId = decoded['id'].toString();
         }
+        if (decoded['name'] != null) {
+          studentName = decoded['name'].toString();
+        }
+        if (decoded['email'] != null) {
+          studentEmail = decoded['email'].toString();
+        }
       } catch (_) {}
+    } else {
+      final match = RegExp(r"""["']?(?:studentId|id)["']?\s*[:=]\s*["']?([^"',}\s]+)["']?""").firstMatch(studentId);
+      if (match != null) {
+        studentId = match.group(1)!;
+      }
     }
 
     final auth = context.read<AuthProvider>();
     final activity = context.read<ActivityProvider>();
+
+    if (studentName != null) {
+      auth.registerLocalStudent(
+        User(
+          id: studentId,
+          name: studentName,
+          email: studentEmail ?? '$studentId@edusync.internal',
+          role: UserRole.student,
+        ),
+      );
+    }
 
     final err = await auth.addStudentToClass(
       classId: widget.classGroup.id,
@@ -92,7 +116,14 @@ class _ClassQrScannerScreenState extends State<ClassQrScannerScreen> {
         ),
       );
     } else {
-      final student = auth.users.firstWhere((u) => u.id == studentId);
+      final student = auth.users.where((u) => u.id == studentId).firstOrNull ??
+          User(
+            id: studentId,
+            name: studentName ?? 'Student ($studentId)',
+            email: studentEmail ?? '$studentId@edusync.internal',
+            role: UserRole.student,
+          );
+
       // Auto-populate submissions for any existing activities
       await activity.onStudentEnrolled(
         classId: widget.classGroup.id,

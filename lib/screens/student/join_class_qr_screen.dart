@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
+import '../../models/class_group.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../theme/app_theme.dart';
@@ -18,9 +19,9 @@ class _JoinClassQrScreenState extends State<JoinClassQrScreen> {
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
     torchEnabled: false,
+    formats: const [BarcodeFormat.qrCode],
   );
   bool _isProcessing = false;
-  String? _lastScanned;
 
   @override
   void dispose() {
@@ -33,19 +34,20 @@ class _JoinClassQrScreenState extends State<JoinClassQrScreen> {
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
 
-    final raw = barcodes.first.rawValue;
-    if (raw == null || raw.isEmpty || raw == _lastScanned) return;
+    final raw = barcodes.first.rawValue ?? barcodes.first.displayValue;
+    if (raw == null || raw.trim().isEmpty) return;
 
     setState(() {
       _isProcessing = true;
-      _lastScanned = raw;
     });
 
-    await _processJoinPayload(raw);
-
-    await Future.delayed(const Duration(milliseconds: 1800));
-    if (mounted) {
-      setState(() => _isProcessing = false);
+    try {
+      await _processJoinPayload(raw);
+    } finally {
+      await Future.delayed(const Duration(milliseconds: 1800));
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -65,7 +67,13 @@ class _JoinClassQrScreenState extends State<JoinClassQrScreen> {
       } catch (_) {}
     }
 
-    // 2. URI scheme check (e.g. edusync://class?id=...)
+    // 2. Regex fallback for JSON payloads
+    final jsonMatch = RegExp(r"""["'](?:classId|id)["']\s*:\s*["']([^"']+)["']""").firstMatch(trimmed);
+    if (jsonMatch != null && jsonMatch.group(1) != null) {
+      return jsonMatch.group(1)!.trim();
+    }
+
+    // 3. URI scheme check (e.g. edusync://class?id=...)
     if (trimmed.startsWith('edusync://')) {
       try {
         final uri = Uri.parse(trimmed);
@@ -76,23 +84,43 @@ class _JoinClassQrScreenState extends State<JoinClassQrScreen> {
       } catch (_) {}
     }
 
-    // 3. Plain ID fallback
+    // 4. Plain ID fallback
     return trimmed;
   }
 
   Future<void> _processJoinPayload(String raw) async {
-    final classId = _extractClassId(raw);
-    if (classId.isEmpty) {
-      _showError('Invalid QR Code. Please scan a valid EduSync class QR code.');
-      return;
-    }
-
     final auth = context.read<AuthProvider>();
     final activity = context.read<ActivityProvider>();
     final user = auth.currentUser;
 
     if (user == null) {
       _showError('You must be signed in to join a class.');
+      return;
+    }
+
+    // Auto-discover class if QR code has full class metadata (supports cross-device & offline enrollment)
+    final trimmed = raw.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        final decoded = jsonDecode(trimmed) as Map<String, dynamic>;
+        final cid = (decoded['classId'] ?? decoded['id'])?.toString().trim();
+        if (cid != null && cid.isNotEmpty) {
+          final cls = ClassGroup(
+            id: cid,
+            name: decoded['name']?.toString() ?? decoded['subject']?.toString() ?? 'Subject',
+            subject: decoded['subject']?.toString() ?? decoded['name']?.toString() ?? 'Subject',
+            section: decoded['section']?.toString() ?? '',
+            teacherId: decoded['teacherId']?.toString() ?? '',
+            studentIds: [],
+          );
+          auth.registerLocalClass(cls);
+        }
+      } catch (_) {}
+    }
+
+    final classId = _extractClassId(raw);
+    if (classId.isEmpty) {
+      _showError('Invalid QR Code. Please scan a valid EduSync class QR code.');
       return;
     }
 

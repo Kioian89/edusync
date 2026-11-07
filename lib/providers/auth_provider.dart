@@ -458,6 +458,30 @@ class AuthProvider extends ChangeNotifier {
     return addStudentToClass(classId: classId, studentId: studentId);
   }
 
+  /// Register or update a class discovered via QR code or remote stream.
+  void registerLocalClass(ClassGroup cls) {
+    final idx = _classes.indexWhere((c) => c.id == cls.id);
+    if (idx != -1) {
+      _classes[idx] = cls;
+    } else {
+      _classes.add(cls);
+    }
+    _saveData();
+    notifyListeners();
+  }
+
+  /// Register or update a student profile discovered via QR code or remote lookup.
+  void registerLocalStudent(User student) {
+    final idx = _users.indexWhere((u) => u.id == student.id);
+    if (idx != -1) {
+      _users[idx] = student;
+    } else {
+      _users.add(student);
+    }
+    _saveData();
+    notifyListeners();
+  }
+
   /// Start real-time Firestore synchronization for classes.
   void startListeningToClasses() {
     _classesSubscription?.cancel();
