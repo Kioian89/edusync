@@ -215,54 +215,70 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
               children: [
                 // Top Header (User circle + Greeting/Title + Action buttons)
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppTheme.primaryGradient,
-                            boxShadow: AppTheme.subtlePillShadow,
-                          ),
-                          child: Center(
-                            child: Text(
-                              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'S',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppTheme.primaryGradient,
+                              boxShadow: AppTheme.subtlePillShadow,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_getGreeting()}, ${user.name.split(" ").first}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.textSecondary,
-                                fontWeight: FontWeight.w600,
+                            child: Center(
+                              child: Text(
+                                user.name.isNotEmpty ? user.name[0].toUpperCase() : 'S',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
                               ),
                             ),
-                            const Text(
-                              'My Activities',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.textMain,
-                                letterSpacing: -0.3,
-                              ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        '${_getGreeting()}, ${user.name.split(" ").first}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const SyncBadge(compact: true),
+                                  ],
+                                ),
+                                const Text(
+                                  'My Activities',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.textMain,
+                                    letterSpacing: -0.3,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SyncBadge(),
-                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(

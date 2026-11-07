@@ -258,55 +258,71 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
               children: [
                 // Top header avatar & greeting like reference UI
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppTheme.primaryGradient,
-                            boxShadow: AppTheme.subtlePillShadow,
-                          ),
-                          child: Center(
-                            child: Text(
-                              user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'T',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppTheme.primaryGradient,
+                              boxShadow: AppTheme.subtlePillShadow,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_getGreeting()}, ${user?.name.split(" ").first ?? "Teacher"}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.textSecondary,
-                                fontWeight: FontWeight.w600,
+                            child: Center(
+                              child: Text(
+                                user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'T',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
                               ),
                             ),
-                            const Text(
-                              'Teacher Dashboard',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.textMain,
-                                letterSpacing: -0.3,
-                              ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        '${_getGreeting()}, ${user?.name.split(" ").first ?? "Teacher"}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const SyncBadge(compact: true),
+                                  ],
+                                ),
+                                const Text(
+                                  'Teacher Dashboard',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.textMain,
+                                    letterSpacing: -0.3,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     // Action pill buttons
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SyncBadge(),
-                        const SizedBox(width: 8),
                         if (selectedClass != null) ...[
                           _CircleIconButton(
                             icon: Icons.qr_code_2_rounded,
@@ -319,7 +335,7 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                         ],
                         _CircleIconButton(
                           icon: Icons.campaign_rounded,
@@ -333,7 +349,7 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                                     ),
                                   ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         _CircleIconButton(
                           icon: Icons.meeting_room_outlined,
                           tooltip: 'Manage Classes',
@@ -1352,6 +1368,8 @@ class _CircleIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
@@ -1359,8 +1377,10 @@ class _CircleIconButton extends StatelessWidget {
         border: Border.all(color: AppTheme.borderLight),
       ),
       child: IconButton(
-        icon: Icon(icon, color: AppTheme.textMain, size: 20),
+        icon: Icon(icon, color: AppTheme.textMain, size: 19),
         tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
         onPressed: onTap,
       ),
     );
