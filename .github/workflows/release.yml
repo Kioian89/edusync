@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Release Tag'
+        required: false
+        default: 'v1.0.1'
 
 jobs:
   build-and-release:
@@ -15,6 +21,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -37,6 +45,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
+          name: Release ${{ github.event.inputs.version_tag || github.ref_name }}
           files: build/app/outputs/flutter-apk/app-release.apk
           generate_release_notes: true
           draft: false
