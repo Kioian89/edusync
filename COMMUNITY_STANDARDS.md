@@ -1,48 +1,36 @@
-# EduSync Community Standards & Code of Conduct
+# EduSync Community Standards
 
-Welcome to **EduSync**! We are committed to providing a safe, respectful, inclusive, and academically honest learning environment for all teachers, instructors, students, and contributors.
+EduSync is a learning platform for educators, students, and contributors. Everyone who participates in the platform or its community is expected to help maintain a respectful, safe, and constructive environment.
 
----
+## Respectful participation
 
-## 1. Core Principles
+- Treat others with respect, regardless of their background, identity, age, or experience.
+- Keep discussion and feedback constructive, relevant, and focused on ideas or work—not personal attacks.
+- Harassment, bullying, hate speech, discrimination, and disruptive behavior are not acceptable.
 
-### 1.1 Academic Integrity & Honesty
-* **Fair Work:** Students are expected to submit original work for assignments, quizzes, and projects. Plagiarism, unauthorized collaboration, or impersonation during evaluations will not be tolerated.
-* **Responsible AI Use:** The integrated Gemini AI teaching copilot is designed to empower educators in crafting curricula and providing constructive feedback. Educators are expected to review AI-generated materials for accuracy, fairness, and grade-level appropriateness before assigning them to students.
+## Learning and academic integrity
 
-### 1.2 Respect & Mutual Dignity
-* Treat all educators, peers, and collaborators with respect regardless of age, background, identity, gender, or skill level.
-* Disagreements and feedback must remain constructive, evidence-based, and courteous.
-* Harassment, bullying, trolling, hate speech, or derogatory comments across announcements, submissions, or chat channels are strictly prohibited.
+- Submit original work and follow the academic integrity rules established by your school or instructor.
+- Do not plagiarize, impersonate another person, or collaborate in ways that violate assignment or assessment requirements.
+- Educators using AI-generated content should review it for accuracy, fairness, and suitability for their students before sharing or assigning it.
 
-### 1.3 Privacy & Data Safety
-* **Protect Credentials:** Never share your personal Google Gemini API keys, passwords, or authentication credentials.
-* **Student Data Protection:** Teachers and administrators must handle student grades, submissions, and personal identifiable information (PII) with the utmost care, in compliance with standard academic privacy guidelines (e.g., FERPA/GDPR principles).
-* **Appropriate Attachments:** Only educational content (documents, worksheets, lecture slides, diagrams) should be shared. Uploading malicious files, copyrighted material without permission, or explicit media is strictly forbidden.
+## Privacy and responsible content
 
----
+- Do not share passwords, API keys, authentication tokens, or other credentials.
+- Handle student records, grades, submissions, and other personal information carefully, and follow applicable school policies and privacy requirements.
+- Share only content you have permission to use. Do not upload malicious files, unlawful material, or content unrelated to the educational purpose of the platform.
 
-## 2. Open Source & Developer Guidelines
+## Contributing to EduSync
 
-For developers contributing to the EduSync codebase:
+- Help create a welcoming environment, especially for people who are new to the project.
+- Keep code reviews professional and actionable. Critique the implementation, not the contributor.
+- Run the relevant tests and static analysis before submitting a change. For Flutter changes, use `flutter test` and `flutter analyze` when applicable.
+- Report suspected security vulnerabilities privately to the maintainers. Do not disclose vulnerability details in public issues or discussions before they can be addressed.
 
-* **Welcoming Environment:** Maintain an encouraging and welcoming atmosphere for new contributors.
-* **Code Integrity:** Ensure all contributions pass existing tests (`flutter test`) and static analysis (`flutter analyze`) with zero errors.
-* **Constructive Code Reviews:** Critique code, not individuals. Provide actionable, polite, and helpful feedback.
-* **Security Reporting:** If you discover a security vulnerability in authentication, database rules, or storage, report it responsibly rather than disclosing it publicly in an open issue.
+## Reporting and enforcement
 
----
+- For classroom concerns, contact the instructor or school administrator.
+- For platform or project concerns, contact the EduSync maintainers through an appropriate private channel. Use a public issue for non-sensitive reports.
+- Maintainers and educators may remove content or restrict access when necessary to protect the community and uphold these standards.
 
-## 3. Enforcement & Reporting
-
-If you observe behavior or content violating these standards:
-
-1. **Classroom Violations:** Report incidents directly to the class instructor or school administrator.
-2. **Platform & Open-Source Violations:** Contact the EduSync maintainers or open a confidential security report via GitHub.
-
-Maintainers and educators reserve the right to remove non-compliant content, revoke classroom access, or suspend offending accounts to maintain the safety of the platform.
-
----
-
-*Thank you for helping us keep EduSync an empowering, secure, and modern digital classroom!*
-
+These standards apply to participation in EduSync and its project community. Thank you for helping make EduSync a respectful and reliable learning environment.

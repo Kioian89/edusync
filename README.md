@@ -1,17 +1,55 @@
-# edusync
+# EduSync
 
-A new Flutter project.
+EduSync is a Flutter application for managing classroom activities and grades. It provides separate workflows for teachers and students, with Firebase-backed accounts and classroom data.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Teacher and student accounts
+- Class management, including QR-based class enrollment
+- Activity creation, student submissions, and grade management
+- Class announcements and student grade views
+- Optional Gemini-powered teaching assistance
+- Firebase Cloud Messaging notifications
 
-A few resources to get you started if this is your first Flutter project:
+## Built with
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter and Dart
+- Firebase Authentication, Cloud Firestore, Cloud Storage, and Cloud Messaging
+- Provider for app state management
+- Firebase AI Logic and Google Gemini for AI-assisted features
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Getting started
+
+### Requirements
+
+- Flutter SDK compatible with the Dart constraint in [`pubspec.yaml`](./pubspec.yaml)
+- A configured Firebase project for the platforms you want to run
+
+### Setup
+
+1. Clone the repository and enter the project directory.
+2. Configure Firebase for your target platform using the [FlutterFire setup guide](https://firebase.google.com/docs/flutter/setup).
+3. Install dependencies:
+
+   ```sh
+   flutter pub get
+   ```
+
+4. Start the app on a connected device or emulator:
+
+   ```sh
+   flutter run
+   ```
+
+Firebase-dependent features require valid Firebase configuration and appropriate Firebase security rules. Gemini features also require the AI configuration used by the app. Do not commit credentials, private API keys, or service-account files.
+
+## Development
+
+Run the test suite and static analysis before submitting changes:
+
+```sh
+flutter test
+flutter analyze
+```
+
+See [COMMUNITY_STANDARDS.md](./COMMUNITY_STANDARDS.md) for expectations for contributors and community members.
