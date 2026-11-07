@@ -45,11 +45,20 @@ class GeminiAssistantProvider extends ChangeNotifier {
 
   static const String compileTimeApiKey = String.fromEnvironment('GEMINI_API_KEY');
 
-  /// Effective API key: Personal key takes precedence over central Firebase key, then compile-time key
-  String? get apiKey =>
-      _personalApiKey ??
-      _firebaseApiKey ??
-      (compileTimeApiKey.isNotEmpty ? compileTimeApiKey : null);
+  /// Effective API key: Personal key takes precedence over central Firebase key, then compile-time key, then default key
+  String? get apiKey {
+    if (_personalApiKey != null && _personalApiKey!.trim().isNotEmpty) {
+      return _personalApiKey!.trim();
+    }
+    if (_firebaseApiKey != null && _firebaseApiKey!.trim().isNotEmpty) {
+      return _firebaseApiKey!.trim();
+    }
+    if (compileTimeApiKey.isNotEmpty) {
+      return compileTimeApiKey;
+    }
+    final def = GeminiService.defaultApiKey;
+    return def.isNotEmpty ? def : null;
+  }
   bool get hasPersonalKey => _personalApiKey != null && _personalApiKey!.trim().isNotEmpty;
   bool get isFirebaseAiConnected =>
       FirebaseAiService.isAvailable ||
@@ -77,6 +86,13 @@ class GeminiAssistantProvider extends ChangeNotifier {
           if (fbConfig['model'] != null) {
             _activeModel = fbConfig['model'] as String;
           }
+        } else if (FirebaseAiService.isAvailable) {
+          // Auto-seed default configuration to central Firebase
+          _firebaseApiKey = GeminiService.defaultApiKey;
+          FirebaseAiService.setFirebaseGeminiConfig(
+            apiKey: GeminiService.defaultApiKey,
+            model: GeminiService.defaultModelName,
+          );
         }
       }
     } catch (_) {}

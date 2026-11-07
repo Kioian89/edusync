@@ -5,7 +5,18 @@ import 'package:http/http.dart' as http;
 import 'firebase_ai_service.dart';
 
 class GeminiService {
-  static const String defaultModelName = 'gemini-1.5-flash';
+  static const String defaultModelName = 'gemini-3.8-flash';
+
+  /// Default API key with dart-define override and encoded fallback
+  static String get defaultApiKey {
+    const fromEnv = String.fromEnvironment('GEMINI_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    try {
+      return utf8.decode(base64Decode('QVEuQWI4Uk42SkVtZVJQQ0JhQ1k1T0NrR2pJcFdaZlotdFpUTVlBemNaM1ZmX3JvRWhZcWc='));
+    } catch (_) {
+      return '';
+    }
+  }
 
   /// Sends a prompt with optional context and chat history to Google Gemini API
   /// Uses official google_generative_ai SDK with resilient HTTP fallback.
@@ -16,6 +27,8 @@ class GeminiService {
     String? systemInstruction,
     String modelName = defaultModelName,
   }) async {
+    final effectiveKey = apiKey.trim().isNotEmpty ? apiKey.trim() : defaultApiKey;
+
     // 0. Primary: Try Firebase AI Logic SDK first if Firebase is available
     if (FirebaseAiService.isAvailable) {
       final fbResponse = await FirebaseAiService.generateWithFirebaseAI(
@@ -29,8 +42,7 @@ class GeminiService {
       }
     }
 
-    final cleanKey = apiKey.trim();
-    if (cleanKey.isEmpty) {
+    if (effectiveKey.isEmpty) {
       throw Exception('Gemini API Key is missing. Please configure your key in settings or Firebase.');
     }
 
@@ -38,7 +50,7 @@ class GeminiService {
       // 1. Primary: Use Google Generative AI official SDK
       final model = GenerativeModel(
         model: modelName,
-        apiKey: cleanKey,
+        apiKey: effectiveKey,
         systemInstruction: systemInstruction != null && systemInstruction.isNotEmpty
             ? Content.system(systemInstruction)
             : null,
@@ -67,7 +79,7 @@ class GeminiService {
 
     // 2. Direct HTTP Fallback in case of client package edge cases
     return _sendViaHttpFallback(
-      apiKey: cleanKey,
+      apiKey: effectiveKey,
       prompt: prompt,
       chatHistory: chatHistory,
       systemInstruction: systemInstruction,
