@@ -43,7 +43,20 @@ jobs:
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee build_log.txt
+
+      - name: Capture Failure Log
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-logs
+          tail -n 500 build_log.txt > error.log
+          git add error.log
+          git commit -m "CI Error log [skip ci]" || true
+          git push -f origin ci-logs || true
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
