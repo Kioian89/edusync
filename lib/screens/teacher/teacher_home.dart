@@ -109,89 +109,6 @@ class _TeacherHomeState extends State<TeacherHome> {
           ),
         ],
       ),
-      floatingActionButton: _selectedIndex == 0
-          ? Container(
-              margin: const EdgeInsets.only(bottom: 70),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Quick Upload Button (Cyan-blue gradient)
-                  InkWell(
-                    onTap: activeClass == null
-                        ? null
-                        : () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => QuickActivitySheet(classGroup: activeClass),
-                            );
-                          },
-                    borderRadius: BorderRadius.circular(22),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.cyanGradient,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: AppTheme.floatingShadow,
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
-                          SizedBox(width: 6),
-                          Text(
-                            'Quick Upload',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // New Activity Button
-                  InkWell(
-                    onTap: activeClass == null
-                        ? null
-                        : () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => ActivityCreateScreen(classGroup: activeClass),
-                            ));
-                          },
-                    borderRadius: BorderRadius.circular(22),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: AppTheme.floatingShadow,
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                          SizedBox(width: 6),
-                          Text(
-                            'New Activity',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
@@ -680,6 +597,91 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                       ],
                     ),
                   ),
+                const SizedBox(height: 18),
+
+                // In-Page Action Buttons Row (Quick Upload & New Activity)
+                Row(
+                  children: [
+                    // Quick Upload Button (Cyan-blue gradient)
+                    Expanded(
+                      child: InkWell(
+                        onTap: selectedClass == null
+                            ? null
+                            : () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (_) =>
+                                      QuickActivitySheet(classGroup: selectedClass),
+                                );
+                              },
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.cyanGradient,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: AppTheme.subtlePillShadow,
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Quick Upload',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // New Activity Button (Primary gradient)
+                    Expanded(
+                      child: InkWell(
+                        onTap: selectedClass == null
+                            ? null
+                            : () {
+                                Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => ActivityCreateScreen(
+                                      classGroup: selectedClass),
+                                ));
+                              },
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: AppTheme.subtlePillShadow,
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'New Activity',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -733,7 +735,7 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Tap + New Activity or Quick Upload to get started.',
+                    'Use Quick Upload or New Activity above to get started.',
                     style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                   ),
                 ],
