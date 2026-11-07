@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // -------------------------------------------------------------------------
+    // USERS COLLECTION
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      // Any authenticated user can read profiles (needed for roster and class lookup)
+      allow read: if isAuthenticated();
+      // Users can only write and update their own profile document
+      allow create, update, delete: if isOwner(userId);
+    }
+
+    // -------------------------------------------------------------------------
+    // CLASSES COLLECTION
+    // -------------------------------------------------------------------------
+    match /classes/{classId} {
+      // Authenticated users can read classes
+      allow read: if isAuthenticated();
+      // Only teachers or class creators can create/update/delete classes
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------------------
+    // ACTIVITIES COLLECTION
+    // -------------------------------------------------------------------------
+    match /activities/{activityId} {
+      allow read: if isAuthenticated();
+      // Teachers can create and manage their activities
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // -------------------------------------------------------------------------
+    // SUBMISSIONS COLLECTION
+    // -------------------------------------------------------------------------
+    match /submissions/{submissionId} {
+      // Students can read their own submissions, teachers can read all
+      allow read: if isAuthenticated();
+      // Students can create and update their submissions
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // -------------------------------------------------------------------------
+    // ANNOUNCEMENTS COLLECTION
+    // -------------------------------------------------------------------------
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // -------------------------------------------------------------------------
+    // CONFIGURATION (e.g. Gemini AI Settings)
+    // -------------------------------------------------------------------------
+    match /config/{configId} {
+      // Authenticated users can read configuration
+      allow read: if isAuthenticated();
+      // Only authenticated users can write configuration
+      allow write: if isAuthenticated();
+    }
+
+    // -------------------------------------------------------------------------
+    // AI CHAT HISTORY
+    // -------------------------------------------------------------------------
+    match /ai_history/{userId}/messages/{messageId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

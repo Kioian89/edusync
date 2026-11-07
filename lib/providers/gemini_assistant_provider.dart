@@ -86,8 +86,8 @@ class GeminiAssistantProvider extends ChangeNotifier {
           if (fbConfig['model'] != null) {
             _activeModel = fbConfig['model'] as String;
           }
-        } else if (FirebaseAiService.isAvailable) {
-          // Auto-seed default configuration to central Firebase
+        } else if (FirebaseAiService.isAvailable && GeminiService.defaultApiKey.isNotEmpty) {
+          // Auto-seed default configuration to central Firebase if key is present
           _firebaseApiKey = GeminiService.defaultApiKey;
           FirebaseAiService.setFirebaseGeminiConfig(
             apiKey: GeminiService.defaultApiKey,

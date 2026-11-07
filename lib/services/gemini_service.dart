@@ -7,15 +7,9 @@ import 'firebase_ai_service.dart';
 class GeminiService {
   static const String defaultModelName = 'gemini-3.8-flash';
 
-  /// Default API key with dart-define override and encoded fallback
+  /// Default API key loaded securely from compile-time dart-define
   static String get defaultApiKey {
-    const fromEnv = String.fromEnvironment('GEMINI_API_KEY');
-    if (fromEnv.isNotEmpty) return fromEnv;
-    try {
-      return utf8.decode(base64Decode('QVEuQWI4Uk42SkVtZVJQQ0JhQ1k1T0NrR2pJcFdaZlotdFpUTVlBemNaM1ZmX3JvRWhZcWc='));
-    } catch (_) {
-      return '';
-    }
+    return const String.fromEnvironment('GEMINI_API_KEY');
   }
 
   /// Sends a prompt with optional context and chat history to Google Gemini API

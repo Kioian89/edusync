@@ -50,7 +50,11 @@ jobs:
       - name: Build Release APK
         run: |
           set -o pipefail
-          flutter build apk --release 2>&1 | tee build_log.txt
+          DART_DEFINES=""
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            DART_DEFINES="--dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
+          fi
+          flutter build apk --release $DART_DEFINES 2>&1 | tee build_log.txt
 
       - name: Upload Failure Log
         if: failure()
