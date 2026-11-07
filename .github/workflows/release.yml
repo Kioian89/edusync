@@ -117,3 +117,16 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up diagnostic log on success
+        if: "${{ success() && github.event.inputs.build_type != 'patch' }}"
+        run: |
+          TAG="${{ github.event.inputs.version_tag || github.ref_name }}"
+          RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG")
+          LOG_ASSET_ID=$(echo "$RELEASE_INFO" | python3 -c "import sys, json; data=json.load(sys.stdin); print(next((a['id'] for a in data.get('assets', []) if a['name'] == 'build_log.txt'), ''))" 2>/dev/null || true)
+          if [ -n "$LOG_ASSET_ID" ]; then
+            echo "Removing previous diagnostic build_log.txt (asset $LOG_ASSET_ID)..."
+            curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$LOG_ASSET_ID"
+          fi
