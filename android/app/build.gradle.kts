@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.dian.edusync"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
