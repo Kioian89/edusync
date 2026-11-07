@@ -7,13 +7,15 @@ import 'providers/activity_provider.dart';
 import 'providers/gemini_assistant_provider.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
+    await NotificationService.initialize();
   } catch (e) {
-    debugPrint('Firebase initialization skipped or error: $e');
+    debugPrint('Firebase/Notification initialization error: $e');
   }
   runApp(const EduSyncApp());
 }

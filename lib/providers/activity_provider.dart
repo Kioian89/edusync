@@ -10,6 +10,7 @@ import '../models/announcement.dart';
 import '../models/submission.dart';
 import '../models/user.dart';
 import '../services/firestore_sync_service.dart';
+import '../services/notification_service.dart';
 
 class ActivityProvider extends ChangeNotifier {
   List<Activity> _activities = [];
@@ -122,6 +123,11 @@ class ActivityProvider extends ChangeNotifier {
     if (FirestoreSyncService.isAvailable) {
       await FirestoreSyncService.saveAnnouncement(a);
     }
+    // Notify students about the new announcement
+    await NotificationService.notifyAnnouncement(
+      title: title,
+      message: message,
+    );
     notifyListeners();
   }
 
@@ -187,6 +193,12 @@ class ActivityProvider extends ChangeNotifier {
         await FirestoreSyncService.saveSubmission(s);
       }
     }
+    // Notify students locally about the new activity (FCM topic handles remote devices)
+    await NotificationService.notifyNewActivity(
+      activityTitle: activity.title,
+      subject: activity.typeLabel,
+      deadline: '${deadline.month}/${deadline.day}/${deadline.year}',
+    );
     notifyListeners();
   }
 
@@ -271,6 +283,15 @@ class ActivityProvider extends ChangeNotifier {
     if (FirestoreSyncService.isAvailable) {
       await FirestoreSyncService.saveSubmission(targetSub);
     }
+    // Notify teacher that a submission was received
+    final activity = _activities.firstWhere(
+      (a) => a.id == activityId,
+      orElse: () => _activities.first,
+    );
+    await NotificationService.notifySubmissionReceived(
+      studentName: studentName.isNotEmpty ? studentName : 'A student',
+      activityTitle: activity.title,
+    );
     notifyListeners();
   }
 
@@ -298,6 +319,16 @@ class ActivityProvider extends ChangeNotifier {
       if (FirestoreSyncService.isAvailable) {
         await FirestoreSyncService.saveSubmission(gradedSub);
       }
+      // Notify student that grade was posted
+      final activity = _activities.firstWhere(
+        (a) => a.id == gradedSub.activityId,
+        orElse: () => _activities.first,
+      );
+      await NotificationService.notifyGradePosted(
+        activityTitle: activity.title,
+        grade: grade.toStringAsFixed(0),
+        totalPoints: activity.totalPoints.toStringAsFixed(0),
+      );
       notifyListeners();
     }
   }
