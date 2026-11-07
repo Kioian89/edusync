@@ -11,6 +11,7 @@ class ActivityCard extends StatelessWidget {
   final VoidCallback? onTap;
   final int? submittedCount;
   final int? totalStudents;
+  final String? className;
 
   const ActivityCard({
     super.key,
@@ -19,6 +20,7 @@ class ActivityCard extends StatelessWidget {
     this.onTap,
     this.submittedCount,
     this.totalStudents,
+    this.className,
   });
 
   @override
@@ -79,6 +81,25 @@ class ActivityCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (className != null && className!.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceSoft,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppTheme.borderLight),
+                        ),
+                        child: Text(
+                          className!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                     const Spacer(),
                     if (submission != null)
                       StatusBadge(status: submission!.status)

@@ -110,13 +110,13 @@ class FirestoreSyncService {
       final classRef = db.collection('classes').doc(classId);
       final userRef = db.collection('users').doc(studentId);
 
-      batch.update(classRef, {
+      batch.set(classRef, {
         'studentIds': FieldValue.arrayUnion([studentId]),
-      });
-      batch.update(userRef, {
+      }, SetOptions(merge: true));
+      batch.set(userRef, {
         'classId': classId,
         'enrolledClassIds': FieldValue.arrayUnion([classId]),
-      });
+      }, SetOptions(merge: true));
 
       await batch.commit();
     } catch (e) {

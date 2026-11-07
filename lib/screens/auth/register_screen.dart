@@ -32,10 +32,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedRole == UserRole.student && _selectedClassId == null) {
-      setState(() => _error = 'Please select a class to enroll in.');
-      return;
-    }
     setState(() { _loading = true; _error = null; });
 
     final auth = context.read<AuthProvider>();
@@ -183,19 +179,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                if (_selectedRole == UserRole.student && auth.classes.isNotEmpty) ...[
+                if (_selectedRole == UserRole.student) ...[
                   const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<String?>(
                     value: _selectedClassId,
                     decoration: const InputDecoration(
-                      labelText: 'Select Class',
+                      labelText: 'Initial Class (Optional)',
                       prefixIcon: Icon(Icons.class_outlined),
+                      helperText: 'You can also join any class later by scanning a QR code',
+                      helperMaxLines: 2,
                     ),
-                    hint: const Text('Choose a class'),
-                    items: auth.classes.map((c) => DropdownMenuItem(
-                      value: c.id,
-                      child: Text(c.displayName),
-                    )).toList(),
+                    hint: const Text('Join later with QR code'),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Join later with QR code / Join code'),
+                      ),
+                      ...auth.classes.map((c) => DropdownMenuItem<String?>(
+                        value: c.id,
+                        child: Text(c.displayName),
+                      )),
+                    ],
                     onChanged: (v) => setState(() => _selectedClassId = v),
                   ),
                 ],

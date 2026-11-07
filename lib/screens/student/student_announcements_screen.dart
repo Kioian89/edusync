@@ -5,8 +5,14 @@ import '../../theme/app_theme.dart';
 import '../../models/announcement.dart';
 
 class StudentAnnouncementsScreen extends StatelessWidget {
-  final String classId;
-  const StudentAnnouncementsScreen({super.key, required this.classId});
+  final String? classId;
+  final List<String>? classIds;
+
+  const StudentAnnouncementsScreen({
+    super.key,
+    this.classId,
+    this.classIds,
+  }) : assert(classId != null || classIds != null, 'Either classId or classIds must be provided');
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
@@ -19,7 +25,9 @@ class StudentAnnouncementsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ActivityProvider>();
-    final list = provider.announcementsForClass(classId);
+    final list = classId != null
+        ? provider.announcementsForClass(classId!)
+        : provider.announcementsForClasses(classIds ?? []);
 
     return Scaffold(
       backgroundColor: AppTheme.background,

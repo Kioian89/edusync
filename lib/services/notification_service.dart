@@ -132,29 +132,33 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    await _localNotifications.show(
-      id,
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-          color: const Color(0xFF5B2D8E),
-          styleInformation: BigTextStyleInformation(body),
+    try {
+      await _localNotifications.show(
+        id,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            color: const Color(0xFF5B2D8E),
+            styleInformation: BigTextStyleInformation(body),
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
         ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      payload: payload,
-    );
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('Notification show error: $e');
+    }
   }
 
   static void _handleForegroundMessage(RemoteMessage message) {

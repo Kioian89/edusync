@@ -33,8 +33,21 @@ class AuthProvider extends ChangeNotifier {
     return _users.where((u) => cls.studentIds.contains(u.id)).toList();
   }
 
-  ClassGroup? studentClass() {
+  List<ClassGroup> get studentClasses {
+    if (_currentUser == null) return [];
+    return _classes
+        .where((c) => c.studentIds.contains(_currentUser!.id))
+        .toList();
+  }
+
+  ClassGroup? studentClass([String? classId]) {
     if (_currentUser == null) return null;
+    if (classId != null && classId.isNotEmpty) {
+      try {
+        return _classes.firstWhere(
+            (c) => c.id == classId && c.studentIds.contains(_currentUser!.id));
+      } catch (_) {}
+    }
     try {
       return _classes
           .firstWhere((c) => c.studentIds.contains(_currentUser!.id));
@@ -357,12 +370,36 @@ class AuthProvider extends ChangeNotifier {
       return 'Class not found. Please check the QR code or Join Code.';
     }
 
-    final studentIdx = _users.indexWhere((u) => u.id == studentId);
-    if (studentIdx == -1) {
+    var studentIdx = _users.indexWhere((u) => u.id == studentId);
+    User? student;
+
+    if (studentIdx != -1) {
+      student = _users[studentIdx];
+    } else if (_currentUser != null && _currentUser!.id == studentId) {
+      student = _currentUser!;
+      _users.add(student);
+      studentIdx = _users.length - 1;
+    } else if (FirebaseAuthService.isFirebaseAvailable) {
+      // Universal cross-device lookup: fetch remote student profile if not local
+      final profile = await FirebaseAuthService.getUserProfile(studentId);
+      if (profile != null) {
+        student = User(
+          id: studentId,
+          name: profile['name'] ?? 'Student',
+          email: profile['email'] ?? '',
+          role: UserRole.student,
+          classId: classId,
+          enrolledClassIds: List<String>.from(profile['enrolledClassIds'] ?? [classId]),
+        );
+        _users.add(student);
+        studentIdx = _users.length - 1;
+      }
+    }
+
+    if (student == null) {
       return 'Student account not found.';
     }
 
-    final student = _users[studentIdx];
     if (student.role != UserRole.student) {
       return 'User is not a student.';
     }
@@ -381,7 +418,8 @@ class AuthProvider extends ChangeNotifier {
       studentIds: [...cls.studentIds, studentId],
     );
 
-    // Update student's classId
+    // Update student's primary classId and list of all enrolled classes
+    final updatedEnrolled = {...student.enrolledClassIds, classId}.toList();
     final updatedStudent = User(
       id: student.id,
       name: student.name,
@@ -389,6 +427,7 @@ class AuthProvider extends ChangeNotifier {
       password: student.password,
       role: student.role,
       classId: classId,
+      enrolledClassIds: updatedEnrolled,
     );
     _users[studentIdx] = updatedStudent;
 

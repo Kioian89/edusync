@@ -36,6 +36,7 @@ class _TeacherHomeState extends State<TeacherHome> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
+      auth.startListeningToClasses();
       final activity = context.read<ActivityProvider>();
       if (auth.teacherClasses.isNotEmpty) {
         setState(() => _selectedClass = auth.teacherClasses.first);
@@ -55,16 +56,21 @@ class _TeacherHomeState extends State<TeacherHome> {
     final auth = context.watch<AuthProvider>();
     final activity = context.watch<ActivityProvider>();
 
+    final activeClass = (_selectedClass != null &&
+            auth.teacherClasses.any((c) => c.id == _selectedClass!.id))
+        ? auth.teacherClasses.firstWhere((c) => c.id == _selectedClass!.id)
+        : (auth.teacherClasses.isNotEmpty ? auth.teacherClasses.first : null);
+
     final pages = [
       _TeacherActivitiesView(
-        selectedClass: _selectedClass,
+        selectedClass: activeClass,
         classes: auth.teacherClasses,
         onClassSelected: (c) => setState(() => _selectedClass = c),
         activityProvider: activity,
         authProvider: auth,
       ),
       _TeacherGradebookView(
-        selectedClass: _selectedClass,
+        selectedClass: activeClass,
         classes: auth.teacherClasses,
         onClassSelected: (c) => setState(() => _selectedClass = c),
         authProvider: auth,
@@ -111,14 +117,14 @@ class _TeacherHomeState extends State<TeacherHome> {
                 children: [
                   // Quick Upload Button (Cyan-blue gradient)
                   InkWell(
-                    onTap: _selectedClass == null
+                    onTap: activeClass == null
                         ? null
                         : () {
                             showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,
-                              builder: (_) => QuickActivitySheet(classGroup: _selectedClass!),
+                              builder: (_) => QuickActivitySheet(classGroup: activeClass),
                             );
                           },
                     borderRadius: BorderRadius.circular(22),
@@ -149,11 +155,11 @@ class _TeacherHomeState extends State<TeacherHome> {
                   const SizedBox(width: 10),
                   // New Activity Button
                   InkWell(
-                    onTap: _selectedClass == null
+                    onTap: activeClass == null
                         ? null
                         : () {
                             Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => ActivityCreateScreen(classGroup: _selectedClass!),
+                              builder: (_) => ActivityCreateScreen(classGroup: activeClass),
                             ));
                           },
                     borderRadius: BorderRadius.circular(22),

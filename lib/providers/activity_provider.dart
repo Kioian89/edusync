@@ -36,8 +36,22 @@ class ActivityProvider extends ChangeNotifier {
           return b.createdAt.compareTo(a.createdAt);
         });
 
+  List<Announcement> announcementsForClasses(List<String> classIds) {
+    if (classIds.isEmpty) return [];
+    return _announcements.where((a) => classIds.contains(a.classId)).toList()
+      ..sort((a, b) {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+  }
+
   List<Activity> activitiesForClass(String classId) =>
       _activities.where((a) => a.classId == classId).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  List<Activity> activitiesForClasses(List<String> classIds) =>
+      _activities.where((a) => classIds.contains(a.classId)).toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
   List<Activity> activitiesForTeacher(String teacherId) =>
