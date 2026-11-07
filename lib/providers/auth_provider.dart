@@ -296,11 +296,11 @@ class AuthProvider extends ChangeNotifier {
     return null;
   }
 
-  Future<void> createClass({
+  Future<ClassGroup?> createClass({
     required String subject,
     required String section,
   }) async {
-    if (_currentUser == null) return;
+    if (_currentUser == null) return null;
     final cls = ClassGroup(
       id: _uuid.v4(),
       name: '$subject - $section',
@@ -315,6 +315,24 @@ class AuthProvider extends ChangeNotifier {
       await FirestoreSyncService.saveClass(cls);
     }
     notifyListeners();
+    return cls;
+  }
+
+  /// Look up class by ID locally or from Firestore
+  Future<ClassGroup?> fetchClassById(String classId) async {
+    final localIdx = _classes.indexWhere((c) => c.id == classId);
+    if (localIdx != -1) return _classes[localIdx];
+
+    if (FirestoreSyncService.isAvailable) {
+      final remote = await FirestoreSyncService.getClassById(classId);
+      if (remote != null) {
+        _classes.add(remote);
+        await _saveData();
+        notifyListeners();
+        return remote;
+      }
+    }
+    return null;
   }
 
   /// Add student to a class by their student ID.
@@ -323,20 +341,35 @@ class AuthProvider extends ChangeNotifier {
     required String classId,
     required String studentId,
   }) async {
-    final classIdx = _classes.indexWhere((c) => c.id == classId);
-    if (classIdx == -1) return 'Class not found.';
+    var classIdx = _classes.indexWhere((c) => c.id == classId);
+    if (classIdx == -1) {
+      // Try to fetch remote class if not loaded yet
+      if (FirestoreSyncService.isAvailable) {
+        final remote = await FirestoreSyncService.getClassById(classId);
+        if (remote != null) {
+          _classes.add(remote);
+          classIdx = _classes.indexWhere((c) => c.id == classId);
+        }
+      }
+    }
+
+    if (classIdx == -1) {
+      return 'Class not found. Please check the QR code or Join Code.';
+    }
 
     final studentIdx = _users.indexWhere((u) => u.id == studentId);
-    if (studentIdx == -1) return 'Student not found.';
+    if (studentIdx == -1) {
+      return 'Student account not found.';
+    }
 
     final student = _users[studentIdx];
     if (student.role != UserRole.student) {
-      return 'Scanned user is not a student.';
+      return 'User is not a student.';
     }
 
     final cls = _classes[classIdx];
     if (cls.studentIds.contains(studentId)) {
-      return '${student.name} is already enrolled in this class.';
+      return 'You are already enrolled in ${cls.displayName}.';
     }
 
     _classes[classIdx] = ClassGroup(
@@ -349,7 +382,7 @@ class AuthProvider extends ChangeNotifier {
     );
 
     // Update student's classId
-    _users[studentIdx] = User(
+    final updatedStudent = User(
       id: student.id,
       name: student.name,
       email: student.email,
@@ -357,6 +390,11 @@ class AuthProvider extends ChangeNotifier {
       role: student.role,
       classId: classId,
     );
+    _users[studentIdx] = updatedStudent;
+
+    if (_currentUser != null && _currentUser!.id == studentId) {
+      _currentUser = updatedStudent;
+    }
 
     await _saveData();
     if (FirestoreSyncService.isAvailable) {

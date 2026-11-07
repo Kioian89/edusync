@@ -80,6 +80,23 @@ class FirestoreSyncService {
     }
   }
 
+  /// Fetch a single class by ID.
+  static Future<ClassGroup?> getClassById(String classId) async {
+    final db = _db;
+    if (db == null) return null;
+
+    try {
+      final doc = await db.collection('classes').doc(classId).get();
+      if (!doc.exists || doc.data() == null) return null;
+      final data = doc.data()!;
+      data['id'] = doc.id;
+      return ClassGroup.fromMap(data);
+    } catch (e) {
+      debugPrint('Firestore getClassById error: $e');
+      return null;
+    }
+  }
+
   /// Add a student to a class roster atomically.
   static Future<void> addStudentToClass({
     required String classId,

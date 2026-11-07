@@ -2,7 +2,7 @@ name: edusync
 description: "EduSync - A Web-based Activity and Grade Management System for Teachers and Students."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.4.0+1
 
 environment:
   sdk: ^3.13.5

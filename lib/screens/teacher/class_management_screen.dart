@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/class_qr_dialog.dart';
 import 'class_qr_scanner_screen.dart';
 
 class ClassManagementScreen extends StatefulWidget {
@@ -62,11 +63,22 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
               final navigator = Navigator.of(context);
-              await context.read<AuthProvider>().createClass(
+              final auth = context.read<AuthProvider>();
+              final newCls = await auth.createClass(
                     subject: subjectCtrl.text.trim(),
                     section: sectionCtrl.text.trim(),
                   );
               navigator.pop();
+
+              if (newCls != null && mounted) {
+                showDialog(
+                  context: context,
+                  builder: (_) => ClassQrDialog(
+                    classGroup: newCls,
+                    teacherName: auth.currentUser?.name,
+                  ),
+                );
+              }
             },
             child: const Text('Create Class', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
@@ -179,6 +191,43 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          // Class QR code for students to scan
+                          InkWell(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => ClassQrDialog(
+                                  classGroup: cls,
+                                  teacherName: auth.currentUser?.name,
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.qr_code_2_rounded, size: 16, color: AppTheme.primary),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'QR Code',
+                                    style: TextStyle(
+                                      color: AppTheme.primary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
                           // Scan QR code button to add students
                           InkWell(
                             onTap: () {

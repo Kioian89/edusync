@@ -13,6 +13,7 @@ import '../auth/login_screen.dart';
 import 'submit_activity_screen.dart';
 import 'grades_screen.dart';
 import 'student_announcements_screen.dart';
+import 'join_class_qr_screen.dart';
 import '../common/community_standards_screen.dart';
 
 class StudentHome extends StatefulWidget {
@@ -228,7 +229,39 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
                       children: [
                         const SyncBadge(),
                         const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const JoinClassQrScreen()),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 7),
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: AppTheme.subtlePillShadow,
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.qr_code_scanner_rounded,
+                                    size: 16, color: Colors.white),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Join Class',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         if (widget.cls != null) ...[
+                          const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -236,7 +269,7 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
                                   classId: widget.cls!.id),
                             )),
                             child: Container(
-                              padding: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
@@ -244,16 +277,16 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
                                 border: Border.all(color: AppTheme.borderLight),
                               ),
                               child: const Icon(Icons.campaign_rounded,
-                                  size: 20, color: AppTheme.primary),
+                                  size: 18, color: AppTheme.primary),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                                horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(14),
                               boxShadow: AppTheme.cardShadow,
                               border: Border.all(color: AppTheme.borderLight),
                             ),
@@ -413,6 +446,68 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
         // Filtered Activities
         Builder(
           builder: (context) {
+            if (widget.cls == null) {
+              return SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 76,
+                          height: 76,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(26),
+                            boxShadow: AppTheme.cardShadow,
+                          ),
+                          child: const Icon(Icons.qr_code_scanner_rounded,
+                              size: 40, color: AppTheme.primary),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'No Class Enrolled Yet',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                              color: AppTheme.textMain),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Scan your teacher\'s Class QR Code or enter the Join Code to join a class and access your activities.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                              height: 1.4),
+                        ),
+                        const SizedBox(height: 22),
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 22, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18)),
+                          ),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const JoinClassQrScreen()),
+                          ),
+                          icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                          label: const Text('Scan QR to Join Class',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 14)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
             final list = _filtered();
             if (list.isEmpty) {
               return SliverFillRemaining(
@@ -605,7 +700,58 @@ class _StudentProfileView extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // Join or Switch Class Card
+                InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const JoinClassQrScreen(),
+                    ),
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: AppTheme.cardShadow,
+                      border: Border.all(color: AppTheme.borderLight),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary, size: 20),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Join or Switch Class',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textMain,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Scan teacher\'s QR code or enter code to enroll',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
 
                 // Community Standards Link Card
                 InkWell(

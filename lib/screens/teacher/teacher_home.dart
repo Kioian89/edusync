@@ -9,6 +9,7 @@ import '../../models/user.dart';
 import '../../widgets/activity_card.dart';
 import '../../widgets/custom_bottom_nav.dart';
 import '../../widgets/sync_badge.dart';
+import '../../widgets/class_qr_dialog.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import 'activity_create_screen.dart';
@@ -219,6 +220,83 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
     return 'Good evening';
   }
 
+  void _showCreateClassDialog(BuildContext context) {
+    final subjectCtrl = TextEditingController();
+    final sectionCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text('Create New Class', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: subjectCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Subject Name (e.g. Science 10)',
+                  prefixIcon: Icon(Icons.book_rounded, color: AppTheme.textSecondary),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: sectionCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Section (e.g. Diamond / Section A)',
+                  prefixIcon: Icon(Icons.group_rounded, color: AppTheme.textSecondary),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w700)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final navigator = Navigator.of(context);
+              final auth = context.read<AuthProvider>();
+              final newCls = await auth.createClass(
+                subject: subjectCtrl.text.trim(),
+                section: sectionCtrl.text.trim(),
+              );
+              navigator.pop();
+
+              if (newCls != null) {
+                widget.onClassSelected(newCls);
+                if (context.mounted) {
+                  showDialog(
+                    context: context,
+                    builder: (_) => ClassQrDialog(
+                      classGroup: newCls,
+                      teacherName: auth.currentUser?.name,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Create Class', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedClass = widget.selectedClass;
@@ -306,6 +384,20 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                       children: [
                         const SyncBadge(),
                         const SizedBox(width: 8),
+                        if (selectedClass != null) ...[
+                          _CircleIconButton(
+                            icon: Icons.qr_code_2_rounded,
+                            tooltip: 'Class QR Code',
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (_) => ClassQrDialog(
+                                classGroup: selectedClass,
+                                teacherName: user?.name,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         _CircleIconButton(
                           icon: Icons.campaign_rounded,
                           tooltip: 'Announcements',
@@ -334,11 +426,11 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                 const SizedBox(height: 20),
 
                 // Horizontal Class Selector Chips (matching reference UI pill filter)
-                if (classes.isNotEmpty)
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: classes.map((c) {
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ...classes.map((c) {
                         final isSel = selectedClass?.id == c.id;
                         return GestureDetector(
                           onTap: () => onClassSelected(c),
@@ -374,9 +466,37 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                             ),
                           ),
                         );
-                      }).toList(),
-                    ),
+                      }),
+                      // "+ New Class" chip
+                      GestureDetector(
+                        onTap: () => _showCreateClassDialog(context),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.add_rounded, size: 16, color: AppTheme.primary),
+                              SizedBox(width: 4),
+                              Text(
+                                'New Class',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                ),
 
                 const SizedBox(height: 14),
 
@@ -480,6 +600,40 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () => showDialog(
+                                context: context,
+                                builder: (_) => ClassQrDialog(
+                                  classGroup: selectedClass,
+                                  teacherName: user?.name,
+                                ),
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 16),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'QR Code',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
