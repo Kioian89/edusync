@@ -61,11 +61,9 @@ class GeminiAssistantProvider extends ChangeNotifier {
   }
   bool get hasPersonalKey => _personalApiKey != null && _personalApiKey!.trim().isNotEmpty;
   bool get isFirebaseAiConnected =>
-      FirebaseAiService.isAvailable ||
       (_firebaseApiKey != null && _firebaseApiKey!.trim().isNotEmpty);
   bool get hasKey =>
-      (apiKey != null && apiKey!.trim().isNotEmpty) ||
-      FirebaseAiService.isAvailable;
+      (apiKey != null && apiKey!.trim().isNotEmpty);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<GeminiMessage> get messages => _messages;
@@ -81,8 +79,8 @@ class GeminiAssistantProvider extends ChangeNotifier {
     try {
       if (FirebaseAiService.isAvailable) {
         final fbConfig = await FirebaseAiService.fetchFirebaseGeminiConfig();
-        if (fbConfig != null && fbConfig['isEnabled'] != false) {
-          _firebaseApiKey = fbConfig['apiKey'] as String?;
+        if (fbConfig != null && fbConfig['isEnabled'] != false && fbConfig['apiKey'] != null) {
+          _firebaseApiKey = (fbConfig['apiKey'] as String?)?.trim();
           if (fbConfig['model'] != null) {
             _activeModel = fbConfig['model'] as String;
           }
@@ -165,7 +163,13 @@ class GeminiAssistantProvider extends ChangeNotifier {
 
   Future<void> sendMessage(String text, {String? classContext}) async {
     final effectiveKey = apiKey ?? '';
-    if (!hasKey || text.trim().isEmpty) return;
+    if (!hasKey || text.trim().isEmpty) {
+      if (!hasKey) {
+        _errorMessage = 'Gemini API key is required. Tap the key icon to connect.';
+        notifyListeners();
+      }
+      return;
+    }
 
     final userMsg = GeminiMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),

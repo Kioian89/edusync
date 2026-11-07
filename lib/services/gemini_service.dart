@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'firebase_ai_service.dart';
 
 class GeminiService {
-  static const String defaultModelName = 'gemini-3.8-flash';
+  static const String defaultModelName = 'gemini-flash-latest';
 
   /// Default API key loaded securely from compile-time dart-define
   static String get defaultApiKey {
@@ -25,14 +25,18 @@ class GeminiService {
 
     // 0. Primary: Try Firebase AI Logic SDK first if Firebase is available
     if (FirebaseAiService.isAvailable) {
-      final fbResponse = await FirebaseAiService.generateWithFirebaseAI(
-        prompt: prompt,
-        chatHistory: chatHistory,
-        systemInstruction: systemInstruction,
-        modelName: modelName,
-      );
-      if (fbResponse != null && fbResponse.isNotEmpty) {
-        return fbResponse;
+      try {
+        final fbResponse = await FirebaseAiService.generateWithFirebaseAI(
+          prompt: prompt,
+          chatHistory: chatHistory,
+          systemInstruction: systemInstruction,
+          modelName: modelName,
+        );
+        if (fbResponse != null && fbResponse.isNotEmpty) {
+          return fbResponse;
+        }
+      } catch (e) {
+        debugPrint('Firebase AI generation note: $e');
       }
     }
 
@@ -68,10 +72,10 @@ class GeminiService {
         return response.text!;
       }
     } catch (e) {
-      debugPrint('google_generative_ai SDK exception, trying direct endpoint: $e');
+      debugPrint('google_generative_ai SDK exception, trying direct endpoint with failover: $e');
     }
 
-    // 2. Direct HTTP Fallback in case of client package edge cases
+    // 2. Direct HTTP Fallback with automatic multi-model failover
     return _sendViaHttpFallback(
       apiKey: effectiveKey,
       prompt: prompt,
@@ -88,82 +92,99 @@ class GeminiService {
     String? systemInstruction,
     required String modelName,
   }) async {
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey',
-    );
+    final candidateModels = [
+      modelName,
+      if (modelName != 'gemini-flash-latest') 'gemini-flash-latest',
+      if (modelName != 'gemini-3.8-flash') 'gemini-3.8-flash',
+    ];
 
-    final List<Map<String, dynamic>> contents = [];
+    String lastError = '';
 
-    for (final turn in chatHistory) {
-      contents.add({
-        'role': (turn['role'] == 'assistant' || turn['role'] == 'model') ? 'model' : 'user',
-        'parts': [
-          {'text': turn['text'] ?? ''}
-        ],
-      });
-    }
-
-    contents.add({
-      'role': 'user',
-      'parts': [
-        {'text': prompt}
-      ],
-    });
-
-    final Map<String, dynamic> requestBody = {
-      'contents': contents,
-      'generationConfig': {
-        'temperature': 0.7,
-        'maxOutputTokens': 1500,
-      },
-    };
-
-    if (systemInstruction != null && systemInstruction.isNotEmpty) {
-      requestBody['systemInstruction'] = {
-        'parts': [
-          {'text': systemInstruction}
-        ]
-      };
-    }
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
+    for (final model in candidateModels) {
+      final url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final candidates = data['candidates'] as List?;
-        if (candidates != null && candidates.isNotEmpty) {
-          final content = candidates[0]['content'] as Map<String, dynamic>?;
-          final parts = content?['parts'] as List?;
-          if (parts != null && parts.isNotEmpty) {
-            return parts[0]['text'] as String? ?? 'No response generated.';
-          }
-        }
-        return 'Empty response from Gemini.';
-      } else {
-        final errData = jsonDecode(response.body);
-        final errMsg = errData['error']?['message'] ?? response.body;
-        throw Exception('Gemini API Error (${response.statusCode}): $errMsg');
+      final List<Map<String, dynamic>> contents = [];
+
+      for (final turn in chatHistory) {
+        contents.add({
+          'role': (turn['role'] == 'assistant' || turn['role'] == 'model') ? 'model' : 'user',
+          'parts': [
+            {'text': turn['text'] ?? ''}
+          ],
+        });
       }
-    } catch (e) {
-      if (e.toString().contains('Exception:')) rethrow;
-      throw Exception('Failed to connect to Gemini API: $e');
+
+      contents.add({
+        'role': 'user',
+        'parts': [
+          {'text': prompt}
+        ],
+      });
+
+      final Map<String, dynamic> requestBody = {
+        'contents': contents,
+        'generationConfig': {
+          'temperature': 0.7,
+          'maxOutputTokens': 1500,
+        },
+      };
+
+      if (systemInstruction != null && systemInstruction.isNotEmpty) {
+        requestBody['systemInstruction'] = {
+          'parts': [
+            {'text': systemInstruction}
+          ]
+        };
+      }
+
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(requestBody),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final candidates = data['candidates'] as List?;
+          if (candidates != null && candidates.isNotEmpty) {
+            final content = candidates[0]['content'] as Map<String, dynamic>?;
+            final parts = content?['parts'] as List?;
+            if (parts != null && parts.isNotEmpty) {
+              return parts[0]['text'] as String? ?? 'No response generated.';
+            }
+          }
+          return 'Empty response from Gemini.';
+        } else {
+          final errData = jsonDecode(response.body);
+          final errMsg = errData['error']?['message'] ?? response.body;
+          lastError = 'Gemini API Error (${response.statusCode}): $errMsg';
+          debugPrint('Model $model attempt: $lastError');
+          continue;
+        }
+      } catch (e) {
+        lastError = 'Failed to connect to Gemini API: $e';
+        debugPrint('Connection error with model $model: $e');
+        continue;
+      }
     }
+
+    throw Exception(lastError.isNotEmpty ? lastError : 'Failed to reach Gemini API across all model endpoints.');
   }
 
   /// Verifies if an API key is valid by sending a tiny ping prompt
   static Future<bool> validateApiKey(String apiKey) async {
     try {
-      final res = await sendMessage(
-        apiKey: apiKey,
+      final res = await _sendViaHttpFallback(
+        apiKey: apiKey.trim(),
         prompt: 'Ping test. Reply with: OK',
+        modelName: defaultModelName,
       );
       return res.isNotEmpty;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('validateApiKey error: $e');
       return false;
     }
   }

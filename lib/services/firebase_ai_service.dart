@@ -27,7 +27,7 @@ class FirebaseAiService {
   /// Gets a GenerativeModel instance powered by the Firebase AI Logic SDK.
   /// Automatically authenticates through Firebase project infrastructure.
   static GenerativeModel? getFirebaseAiModel({
-    String modelName = 'gemini-3.8-flash',
+    String modelName = 'gemini-flash-latest',
     String? systemInstruction,
   }) {
     if (!isAvailable) return null;
@@ -54,7 +54,7 @@ class FirebaseAiService {
     required String prompt,
     List<Map<String, String>> chatHistory = const [],
     String? systemInstruction,
-    String modelName = 'gemini-3.8-flash',
+    String modelName = 'gemini-flash-latest',
   }) async {
     final model = getFirebaseAiModel(
       modelName: modelName,
