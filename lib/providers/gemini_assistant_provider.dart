@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/gemini_service.dart';
+import '../services/firebase_ai_service.dart';
 
 class GeminiMessage {
   final String id;
@@ -24,28 +25,54 @@ class GeminiMessage {
       };
 
   factory GeminiMessage.fromMap(Map<String, dynamic> map) => GeminiMessage(
-        id: map['id'],
-        text: map['text'],
-        isUser: map['isUser'],
-        timestamp: DateTime.parse(map['timestamp']),
+        id: map['id'] ?? '',
+        text: map['text'] ?? '',
+        isUser: map['isUser'] ?? false,
+        timestamp: map['timestamp'] != null
+            ? DateTime.tryParse(map['timestamp']) ?? DateTime.now()
+            : DateTime.now(),
       );
 }
 
 class GeminiAssistantProvider extends ChangeNotifier {
-  String? _apiKey;
+  String? _personalApiKey;
+  String? _firebaseApiKey;
+  String _activeModel = GeminiService.defaultModelName;
   bool _isLoading = false;
   String? _errorMessage;
   final List<GeminiMessage> _messages = [];
+  String? _currentUserId;
 
-  String? get apiKey => _apiKey;
-  bool get hasKey => _apiKey != null && _apiKey!.trim().isNotEmpty;
+  /// Effective API key: Personal key takes precedence over central Firebase key
+  String? get apiKey => _personalApiKey ?? _firebaseApiKey;
+  bool get hasPersonalKey => _personalApiKey != null && _personalApiKey!.trim().isNotEmpty;
+  bool get isFirebaseAiConnected => _firebaseApiKey != null && _firebaseApiKey!.trim().isNotEmpty;
+  bool get hasKey => apiKey != null && apiKey!.trim().isNotEmpty;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<GeminiMessage> get messages => _messages;
+  String get activeModel => _activeModel;
 
-  Future<void> init() async {
+  /// Initialize provider: load local cache, and sync Firebase Gemini configuration
+  Future<void> init({String? userId}) async {
+    _currentUserId = userId;
     final prefs = await SharedPreferences.getInstance();
-    _apiKey = prefs.getString('teacher_gemini_api_key');
+    _personalApiKey = prefs.getString('teacher_gemini_api_key');
+
+    // 1. Fetch Firebase-managed Gemini configuration
+    try {
+      if (FirebaseAiService.isAvailable) {
+        final fbConfig = await FirebaseAiService.fetchFirebaseGeminiConfig();
+        if (fbConfig != null && fbConfig['isEnabled'] != false) {
+          _firebaseApiKey = fbConfig['apiKey'] as String?;
+          if (fbConfig['model'] != null) {
+            _activeModel = fbConfig['model'] as String;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Load cached chat history
     final historyJson = prefs.getString('teacher_gemini_chat_history');
     if (historyJson != null) {
       try {
@@ -54,13 +81,15 @@ class GeminiAssistantProvider extends ChangeNotifier {
         _messages.addAll(list.map((m) => GeminiMessage.fromMap(m)));
       } catch (_) {}
     }
+
     notifyListeners();
   }
 
+  /// Sets or updates personal Gemini API key
   Future<bool> setApiKey(String key) async {
     final clean = key.trim();
     if (clean.isEmpty) {
-      _apiKey = null;
+      _personalApiKey = null;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('teacher_gemini_api_key');
       notifyListeners();
@@ -75,7 +104,7 @@ class GeminiAssistantProvider extends ChangeNotifier {
     _isLoading = false;
 
     if (isValid) {
-      _apiKey = clean;
+      _personalApiKey = clean;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('teacher_gemini_api_key', clean);
       notifyListeners();
@@ -87,15 +116,31 @@ class GeminiAssistantProvider extends ChangeNotifier {
     }
   }
 
+  /// Saves the Gemini API key centrally into Firebase (for all teachers in school)
+  Future<void> setFirebaseCentralKey(String key, {String model = 'gemini-1.5-flash'}) async {
+    final clean = key.trim();
+    if (clean.isEmpty) return;
+
+    await FirebaseAiService.setFirebaseGeminiConfig(
+      apiKey: clean,
+      model: model,
+      isEnabled: true,
+    );
+    _firebaseApiKey = clean;
+    _activeModel = model;
+    notifyListeners();
+  }
+
   Future<void> removeApiKey() async {
-    _apiKey = null;
+    _personalApiKey = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('teacher_gemini_api_key');
     notifyListeners();
   }
 
   Future<void> sendMessage(String text, {String? classContext}) async {
-    if (!hasKey || text.trim().isEmpty) return;
+    final effectiveKey = apiKey;
+    if (effectiveKey == null || effectiveKey.trim().isEmpty || text.trim().isEmpty) return;
 
     final userMsg = GeminiMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -108,6 +153,17 @@ class GeminiAssistantProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     await _saveHistory();
+
+    // Sync user message to Firebase if available
+    if (_currentUserId != null && _currentUserId!.isNotEmpty) {
+      FirebaseAiService.saveChatMessage(
+        userId: _currentUserId!,
+        messageId: userMsg.id,
+        text: userMsg.text,
+        isUser: true,
+        timestamp: userMsg.timestamp,
+      );
+    }
 
     final history = _messages.sublist(0, _messages.length - 1).map((m) {
       return {
@@ -124,10 +180,11 @@ class GeminiAssistantProvider extends ChangeNotifier {
 
     try {
       final responseText = await GeminiService.sendMessage(
-        apiKey: _apiKey!,
+        apiKey: effectiveKey,
         prompt: text.trim(),
         chatHistory: history,
         systemInstruction: systemInstruction,
+        modelName: _activeModel,
       );
 
       final assistantMsg = GeminiMessage(
@@ -137,6 +194,17 @@ class GeminiAssistantProvider extends ChangeNotifier {
         timestamp: DateTime.now(),
       );
       _messages.add(assistantMsg);
+
+      // Sync assistant message to Firebase
+      if (_currentUserId != null && _currentUserId!.isNotEmpty) {
+        FirebaseAiService.saveChatMessage(
+          userId: _currentUserId!,
+          messageId: assistantMsg.id,
+          text: assistantMsg.text,
+          isUser: false,
+          timestamp: assistantMsg.timestamp,
+        );
+      }
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -150,6 +218,11 @@ class GeminiAssistantProvider extends ChangeNotifier {
     _messages.clear();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('teacher_gemini_chat_history');
+
+    if (_currentUserId != null && _currentUserId!.isNotEmpty) {
+      FirebaseAiService.clearFirebaseChatHistory(_currentUserId!);
+    }
+
     notifyListeners();
   }
 
@@ -161,4 +234,3 @@ class GeminiAssistantProvider extends ChangeNotifier {
     );
   }
 }
-

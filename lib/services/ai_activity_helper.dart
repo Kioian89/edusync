@@ -1,5 +1,26 @@
+import 'gemini_service.dart';
+
 class AiActivityHelper {
-  /// AI generates an Activity task with guide questions and instructions
+  /// Asynchronously generates activity content using live Google Gemini AI if available,
+  /// falling back seamlessly to structured pedagogical templates.
+  static Future<Map<String, String>> generateActivityAsync({
+    required String topic,
+    required List<String> fileNames,
+    String? apiKey,
+  }) async {
+    if (apiKey != null && apiKey.trim().isNotEmpty) {
+      try {
+        return await GeminiService.generateActivityTask(
+          apiKey: apiKey.trim(),
+          topic: topic,
+          fileNames: fileNames,
+        );
+      } catch (_) {}
+    }
+    return generateActivityContent(topic: topic, fileNames: fileNames);
+  }
+
+  /// AI generates an Activity task with guide questions and instructions (offline template)
   static Map<String, String> generateActivityContent({
     required String topic,
     required List<String> fileNames,

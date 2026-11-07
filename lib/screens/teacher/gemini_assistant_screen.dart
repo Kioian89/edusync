@@ -27,7 +27,8 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GeminiAssistantProvider>().init();
+      final user = context.read<AuthProvider>().currentUser;
+      context.read<GeminiAssistantProvider>().init(userId: user?.id);
     });
   }
 
@@ -53,6 +54,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
   void _showApiKeyDialog(BuildContext context, GeminiAssistantProvider gemini) {
     final keyCtrl = TextEditingController(text: gemini.apiKey ?? '');
     bool isSubmitting = false;
+    bool syncToFirebase = true;
 
     showModalBottomSheet(
       context: context,
@@ -95,7 +97,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
-                            Icons.key_rounded,
+                            Icons.auto_awesome_rounded,
                             color: Colors.white,
                             size: 20,
                           ),
@@ -106,7 +108,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Teacher Gemini API Key',
+                                'Gemini AI Configuration',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w900,
@@ -114,7 +116,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                                 ),
                               ),
                               Text(
-                                'Connect your personal Google AI Studio Key',
+                                'Powered by Google Gemini & Firebase',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: AppTheme.textSecondary,
@@ -147,7 +149,31 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: syncToFirebase,
+                      activeColor: AppTheme.primary,
+                      title: const Text(
+                        'Share with Firebase (School AI)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textMain,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Syncs key to Firebase Firestore so all teachers in the school get Gemini AI out-of-the-box.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setModalState(() => syncToFirebase = val);
+                      },
+                    ),
+                    const SizedBox(height: 10),
                     if (gemini.errorMessage != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -192,9 +218,11 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                               ? null
                               : () async {
                                   setModalState(() => isSubmitting = true);
-                                  final success = await gemini.setApiKey(
-                                    keyCtrl.text.trim(),
-                                  );
+                                  final entered = keyCtrl.text.trim();
+                                  final success = await gemini.setApiKey(entered);
+                                  if (success && syncToFirebase && entered.isNotEmpty) {
+                                    await gemini.setFirebaseCentralKey(entered);
+                                  }
                                   setModalState(() => isSubmitting = false);
                                   if (success && sheetCtx.mounted) {
                                     Navigator.pop(sheetCtx);
@@ -312,9 +340,11 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    gemini.hasKey
-                        ? Icons.check_circle_rounded
-                        : Icons.key_rounded,
+                    gemini.isFirebaseAiConnected
+                        ? Icons.cloud_done_rounded
+                        : gemini.hasKey
+                            ? Icons.check_circle_rounded
+                            : Icons.key_rounded,
                     size: 14,
                     color: gemini.hasKey
                         ? AppTheme.statusGraded
@@ -322,7 +352,11 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    gemini.hasKey ? 'Connected' : 'Set API Key',
+                    gemini.isFirebaseAiConnected && !gemini.hasPersonalKey
+                        ? 'Firebase AI'
+                        : gemini.hasKey
+                            ? 'Connected'
+                            : 'Set API Key',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,

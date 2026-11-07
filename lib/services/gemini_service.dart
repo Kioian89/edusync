@@ -1,38 +1,88 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _defaultModel = 'gemini-1.5-flash';
+  static const String defaultModelName = 'gemini-1.5-flash';
 
   /// Sends a prompt with optional context and chat history to Google Gemini API
+  /// Uses official google_generative_ai SDK with resilient HTTP fallback.
   static Future<String> sendMessage({
     required String apiKey,
     required String prompt,
     List<Map<String, String>> chatHistory = const [],
     String? systemInstruction,
+    String modelName = defaultModelName,
   }) async {
     final cleanKey = apiKey.trim();
     if (cleanKey.isEmpty) {
-      throw Exception('Gemini API Key is missing. Please configure your key in settings.');
+      throw Exception('Gemini API Key is missing. Please configure your key in settings or Firebase.');
     }
 
+    try {
+      // 1. Primary: Use Google Generative AI official SDK
+      final model = GenerativeModel(
+        model: modelName,
+        apiKey: cleanKey,
+        systemInstruction: systemInstruction != null && systemInstruction.isNotEmpty
+            ? Content.system(systemInstruction)
+            : null,
+        generationConfig: GenerationConfig(
+          temperature: 0.7,
+          maxOutputTokens: 1500,
+        ),
+      );
+
+      final historyContent = chatHistory.map((turn) {
+        final isModel = turn['role'] == 'assistant' || turn['role'] == 'model';
+        return isModel
+            ? Content.model([TextPart(turn['text'] ?? '')])
+            : Content.text(turn['text'] ?? '');
+      }).toList();
+
+      final chat = model.startChat(history: historyContent);
+      final response = await chat.sendMessage(Content.text(prompt));
+
+      if (response.text != null && response.text!.isNotEmpty) {
+        return response.text!;
+      }
+    } catch (e) {
+      debugPrint('google_generative_ai SDK exception, trying direct endpoint: $e');
+    }
+
+    // 2. Direct HTTP Fallback in case of client package edge cases
+    return _sendViaHttpFallback(
+      apiKey: cleanKey,
+      prompt: prompt,
+      chatHistory: chatHistory,
+      systemInstruction: systemInstruction,
+      modelName: modelName,
+    );
+  }
+
+  static Future<String> _sendViaHttpFallback({
+    required String apiKey,
+    required String prompt,
+    List<Map<String, String>> chatHistory = const [],
+    String? systemInstruction,
+    required String modelName,
+  }) async {
     final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$_defaultModel:generateContent?key=$cleanKey',
+      'https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey',
     );
 
     final List<Map<String, dynamic>> contents = [];
 
-    // Add prior conversation turns
     for (final turn in chatHistory) {
       contents.add({
-        'role': turn['role'] == 'assistant' ? 'model' : 'user',
+        'role': (turn['role'] == 'assistant' || turn['role'] == 'model') ? 'model' : 'user',
         'parts': [
           {'text': turn['text'] ?? ''}
         ],
       });
     }
 
-    // Add current user prompt
     contents.add({
       'role': 'user',
       'parts': [
@@ -97,5 +147,51 @@ class GeminiService {
       return false;
     }
   }
-}
 
+  /// High-level method for AI pedagogical activity generation
+  static Future<Map<String, String>> generateActivityTask({
+    required String apiKey,
+    required String topic,
+    List<String> fileNames = const [],
+    String gradeLevel = 'High School',
+  }) async {
+    final prompt =
+        'You are an expert curriculum developer. Based on the topic "$topic" '
+        '${fileNames.isNotEmpty ? "and attached files: ${fileNames.join(', ')}" : ""}, '
+        'generate a structured student learning activity in JSON format with exactly 3 keys:\n'
+        '1. "description": A thorough lesson prompt, guide questions in Parts I, II, and III.\n'
+        '2. "answerSheetTemplate": A clean, formatted fill-in worksheet template for the student.\n'
+        '3. "teacherKey": An evaluation rubric and answer guide with suggested point values.\n'
+        'Return ONLY valid raw JSON with keys: description, answerSheetTemplate, teacherKey.';
+
+    try {
+      final raw = await sendMessage(
+        apiKey: apiKey,
+        prompt: prompt,
+        systemInstruction: 'Output valid JSON only without markdown formatting.',
+      );
+
+      // Clean markdown code blocks if returned
+      String cleaned = raw.trim();
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.substring(7);
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.substring(3);
+      }
+      if (cleaned.endsWith('```')) {
+        cleaned = cleaned.substring(0, cleaned.length - 3);
+      }
+
+      final parsed = jsonDecode(cleaned.trim()) as Map<String, dynamic>;
+      return {
+        'title': topic.isNotEmpty ? topic : 'Classroom Learning Activity',
+        'description': parsed['description']?.toString() ?? '',
+        'answerSheetTemplate': parsed['answerSheetTemplate']?.toString() ?? '',
+        'teacherKey': parsed['teacherKey']?.toString() ?? '',
+      };
+    } catch (e) {
+      debugPrint('AI Activity generation error: $e');
+      rethrow;
+    }
+  }
+}

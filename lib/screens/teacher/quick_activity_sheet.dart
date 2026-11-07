@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
 import '../../models/class_group.dart';
 import '../../services/ai_activity_helper.dart';
+import '../../providers/gemini_assistant_provider.dart';
 import '../../theme/app_theme.dart';
 
 class QuickActivitySheet extends StatefulWidget {
@@ -83,15 +84,20 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
     }
   }
 
-  void _applyAiActivityGeneration() {
-    final generated = AiActivityHelper.generateActivityContent(
+  Future<void> _applyAiActivityGeneration() async {
+    final geminiKey = context.read<GeminiAssistantProvider>().apiKey;
+    final generated = await AiActivityHelper.generateActivityAsync(
       topic: _titleCtrl.text.isNotEmpty ? _titleCtrl.text : 'Module Activity',
       fileNames: _attachmentNames,
+      apiKey: geminiKey,
     );
-    _descCtrl.text = generated['description'] ?? _descCtrl.text;
-    _answerSheetTemplate = generated['answerSheetTemplate'];
-    _teacherAnswerKey = generated['teacherKey'];
-    _pointsCtrl.text = '50';
+    if (!mounted) return;
+    setState(() {
+      _descCtrl.text = generated['description'] ?? _descCtrl.text;
+      _answerSheetTemplate = generated['answerSheetTemplate'];
+      _teacherAnswerKey = generated['teacherKey'];
+      _pointsCtrl.text = '50';
+    });
   }
 
   Future<void> _publishQuickActivity() async {

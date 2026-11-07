@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
 import '../../models/class_group.dart';
 import '../../services/ai_activity_helper.dart';
+import '../../providers/gemini_assistant_provider.dart';
 import '../../theme/app_theme.dart';
 
 class ActivityCreateScreen extends StatefulWidget {
@@ -83,17 +84,25 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
     });
   }
 
-  void _generateWithAi() {
+  Future<void> _generateWithAi() async {
     final topic = _titleCtrl.text.isNotEmpty
         ? _titleCtrl.text
         : (_attachmentNames.isNotEmpty ? _attachmentNames.first : 'Module Lesson');
 
-    final content = AiActivityHelper.generateActivityContent(
+    setState(() => _loading = true);
+
+    final geminiKey = context.read<GeminiAssistantProvider>().apiKey;
+
+    final content = await AiActivityHelper.generateActivityAsync(
       topic: topic,
       fileNames: _attachmentNames,
+      apiKey: geminiKey,
     );
 
+    if (!mounted) return;
+
     setState(() {
+      _loading = false;
       if (_titleCtrl.text.isEmpty) {
         _titleCtrl.text = content['title'] ?? topic;
       }
@@ -104,9 +113,11 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✨ AI generated activity tasks & answer sheet template!'),
-        backgroundColor: Colors.indigo,
+      SnackBar(
+        content: Text(geminiKey != null && geminiKey.isNotEmpty
+            ? '✨ Gemini AI generated custom activity tasks & rubric!'
+            : '✨ AI generated activity tasks & answer sheet template!'),
+        backgroundColor: AppTheme.primary,
       ),
     );
   }
