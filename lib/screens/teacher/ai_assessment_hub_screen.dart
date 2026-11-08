@@ -13,6 +13,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/gemini_assistant_provider.dart';
 import '../../services/assessment_ai_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/gemini_api_key_dialog.dart';
 import 'assessment_analytics_screen.dart';
 import 'assessment_editor_screen.dart';
 
@@ -135,12 +136,18 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
     _runAnalysis();
   }
 
-  Future<void> _runAnalysis() async {
+  Future<void> _runAnalysis({bool promptKeyIfMissing = false}) async {
     final text = _contentCtrl.text.trim();
     if (text.isEmpty) return;
 
+    final gemini = context.read<GeminiAssistantProvider>();
+    if (promptKeyIfMissing && !gemini.hasKey) {
+      await GeminiApiKeyDialog.show(context);
+    }
+
     setState(() => _isAnalyzing = true);
-    final geminiKey = context.read<GeminiAssistantProvider>().apiKey;
+    // Read apiKey before the async gap to avoid use_build_context_synchronously lint
+    final geminiKey = gemini.apiKey;
 
     final result = await AssessmentAiService.analyzeLessonMaterial(
       lessonContent: text,
@@ -171,6 +178,12 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
         const SnackBar(content: Text('Please select at least 1 question type.')),
       );
       return;
+    }
+
+    final gemini = context.read<GeminiAssistantProvider>();
+    if (!gemini.hasKey) {
+      final configured = await GeminiApiKeyDialog.show(context);
+      if (!configured && !mounted) return;
     }
 
     setState(() => _isGenerating = true);
@@ -237,6 +250,8 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
 
   @override
   Widget build(BuildContext context) {
+    final gemini = context.watch<GeminiAssistantProvider>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
@@ -280,6 +295,17 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              gemini.hasKey ? Icons.tune_rounded : Icons.key_rounded,
+              color: gemini.hasKey ? AppTheme.primary : AppTheme.statusPending,
+            ),
+            tooltip: gemini.hasKey ? 'Gemini AI Settings' : 'Configure Gemini API Key',
+            onPressed: () => GeminiApiKeyDialog.show(context),
+          ),
+          const SizedBox(width: 4),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppTheme.primary,
