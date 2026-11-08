@@ -38,6 +38,16 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Rename the output APK to edusync.apk
+    applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                output.outputFileName = "edusync.apk"
+            }
+    }
 }
 
 kotlin {
