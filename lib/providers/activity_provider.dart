@@ -460,10 +460,16 @@ class ActivityProvider extends ChangeNotifier {
       }
     }, onError: (e) => debugPrint('Activities stream error: $e'));
 
-    // Stream submissions
-    final subStream = isTeacher
+    // Stream submissions: for activities in the enrolled classes
+    final classActivityIds = _activities
+        .where((a) => classIds.contains(a.classId))
+        .map((a) => a.id)
+        .toList();
+    final subStream = isTeacher || classActivityIds.isNotEmpty
         ? FirestoreSyncService.streamSubmissionsForActivities(
-            _activities.map((a) => a.id).toList())
+            classActivityIds.isNotEmpty
+                ? classActivityIds
+                : _activities.map((a) => a.id).toList())
         : FirestoreSyncService.streamSubmissionsForStudent(userId);
 
     _submissionsSub = subStream.listen((remote) {

@@ -11,6 +11,7 @@ import '../../widgets/sync_badge.dart';
 import '../../widgets/student_qr_dialog.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
+import 'classmates_status_screen.dart';
 import 'submit_activity_screen.dart';
 import 'grades_screen.dart';
 import 'student_announcements_screen.dart';
@@ -82,6 +83,10 @@ class _StudentHomeState extends State<StudentHome> {
         selectedClassId: activeClassId,
         onSelectClass: (id) => setState(() => _selectedClassId = id),
       ),
+      ClassmatesStatusScreen(
+        initialClassId: activeClassId,
+        showAppBar: false,
+      ),
       GradesScreen(
         activities: allActivities,
         mySubmissions: mySubmissions,
@@ -107,6 +112,11 @@ class _StudentHomeState extends State<StudentHome> {
             icon: Icons.grid_view_outlined,
             selectedIcon: Icons.grid_view_rounded,
             label: 'Tasks',
+          ),
+          CustomNavItem(
+            icon: Icons.people_alt_outlined,
+            selectedIcon: Icons.people_alt_rounded,
+            label: 'Classmates',
           ),
           CustomNavItem(
             icon: Icons.pie_chart_outline_rounded,
@@ -336,6 +346,27 @@ class _StudentActivitiesViewState extends State<_StudentActivitiesView> {
                                 border: Border.all(color: AppTheme.borderLight),
                               ),
                               child: const Icon(Icons.campaign_rounded,
+                                  size: 18, color: AppTheme.primary),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ClassmatesStatusScreen(
+                                  initialClassId: widget.selectedClassId,
+                                ),
+                              ),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: AppTheme.cardShadow,
+                                border: Border.all(color: AppTheme.borderLight),
+                              ),
+                              child: const Icon(Icons.people_alt_rounded,
                                   size: 18, color: AppTheme.primary),
                             ),
                           ),

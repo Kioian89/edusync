@@ -46,7 +46,8 @@ class CustomBottomNav extends StatelessWidget {
             return AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeInOut,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                  horizontal: items.length > 3 ? 12 : 16, vertical: 10),
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(26),
@@ -62,14 +63,14 @@ class CustomBottomNav extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(item.selectedIcon, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
                     item.label.toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: items.length > 3 ? 11 : 12,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -82,7 +83,7 @@ class CustomBottomNav extends StatelessWidget {
             onTap: () => onTap(index),
             borderRadius: BorderRadius.circular(20),
             child: Padding(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(items.length > 3 ? 8 : 10),
               child: Icon(
                 item.icon,
                 color: const Color(0xFF94A3B8),
