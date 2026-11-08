@@ -116,7 +116,7 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(geminiKey != null && geminiKey.isNotEmpty
-            ? '✨ Gemini AI generated custom activity tasks & rubric!'
+            ? '✨ Lodix AI generated custom activity tasks & rubric!'
             : '✨ AI generated activity tasks & answer sheet template!'),
         backgroundColor: AppTheme.primary,
       ),

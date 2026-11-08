@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/gemini_assistant_provider.dart';
+import '../services/gemini_service.dart';
 import '../theme/app_theme.dart';
 
 class GeminiApiKeyDialog {
-  /// Opens a step-by-step guided sheet for the teacher to set their personal
-  /// Gemini API key. The key is stored only on this device.
+  /// Opens a guided sheet for the teacher to set their AI API key.
+  /// Supports any provider (Google Gemini, Groq, OpenAI, Anthropic Claude, OpenRouter, DeepSeek).
+  /// Auto-detects the provider from the key format and saves it locally and privately.
   static Future<bool> show(BuildContext context) async {
     final gemini = context.read<GeminiAssistantProvider>();
     final keyCtrl = TextEditingController(text: gemini.apiKey ?? '');
@@ -23,13 +25,20 @@ class GeminiApiKeyDialog {
       builder: (sheetCtx) {
         return StatefulBuilder(
           builder: (ctx2, setModalState) {
+            final currentKey = keyCtrl.text.trim();
+            final detected = currentKey.isNotEmpty
+                ? GeminiService.detectProvider(currentKey)
+                : (gemini.hasKey
+                    ? gemini.detectedProvider
+                    : AiProvider.unknown);
+
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx2).viewInsets.bottom,
               ),
               child: Container(
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(ctx2).size.height * 0.9,
+                  maxHeight: MediaQuery.of(ctx2).size.height * 0.92,
                 ),
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                 decoration: const BoxDecoration(
@@ -54,7 +63,7 @@ class GeminiApiKeyDialog {
                       ),
                       const SizedBox(height: 18),
 
-                      // Header
+                      // Header - Lodix AI Universal Engine
                       Row(
                         children: [
                           Container(
@@ -76,7 +85,7 @@ class GeminiApiKeyDialog {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Google Gemini API Key',
+                                  'Lodix AI Configuration',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w900,
@@ -85,7 +94,7 @@ class GeminiApiKeyDialog {
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'Powers Lesson Analysis & AI Quiz Generation',
+                                  'Universal AI Engine • Gemini, Groq, OpenAI & Claude',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
@@ -97,186 +106,70 @@ class GeminiApiKeyDialog {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
 
-                      // Step-by-Step Educational Guide Card
+                      // Free API Key Guide Card
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppTheme.borderLight),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            const Row(
                               children: [
-                                const Row(
-                                  children: [
-                                    Icon(Icons.help_outline_rounded,
-                                        size: 16, color: AppTheme.primary),
-                                    SizedBox(width: 6),
-                                    Text(
-                                      'How to get your FREE API Key',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppTheme.textMain,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.statusGraded
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Text(
-                                    '100% Free',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTheme.statusGraded,
-                                    ),
+                                Icon(Icons.stars_rounded,
+                                    size: 16, color: AppTheme.primary),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Recommended Free AI Providers',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.textMain,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            _buildGuideStep(
-                              stepNum: '1',
-                              title: 'Open Google AI Studio in your browser:',
-                              action: Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 6,
-                                  children: [
-                                    // Button 1: Open directly in browser
-                                    InkWell(
-                                      onTap: () async {
-                                        final uri = Uri.parse('https://aistudio.google.com/app/apikey');
-                                        try {
-                                          final launched = await launchUrl(
-                                            uri,
-                                            mode: LaunchMode.externalApplication,
-                                          );
-                                          if (!launched) {
-                                            await launchUrl(uri, mode: LaunchMode.platformDefault);
-                                          }
-                                        } catch (e) {
-                                          debugPrint('Could not launch URL: $e');
-                                        }
-                                      },
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 7),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primary,
-                                          borderRadius: BorderRadius.circular(10),
-                                          boxShadow: AppTheme.subtlePillShadow,
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.open_in_new_rounded,
-                                                size: 14, color: Colors.white),
-                                            SizedBox(width: 6),
-                                            Text(
-                                              'Open AI Studio',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    // Button 2: Copy link to clipboard
-                                    InkWell(
-                                      onTap: () async {
-                                        await Clipboard.setData(const ClipboardData(
-                                            text: 'https://aistudio.google.com/app/apikey'));
-                                        if (sheetCtx.mounted) {
-                                          ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                                            const SnackBar(
-                                              content: Row(
-                                                children: [
-                                                  Icon(Icons.check_circle_rounded,
-                                                      color: Colors.white, size: 18),
-                                                  SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      'Link copied! https://aistudio.google.com/app/apikey',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              backgroundColor: AppTheme.statusGraded,
-                                              duration: Duration(seconds: 3),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 7),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primary
-                                              .withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(
-                                              color: AppTheme.primary
-                                                  .withValues(alpha: 0.25)),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.copy_rounded,
-                                                size: 13, color: AppTheme.primary),
-                                            SizedBox(width: 6),
-                                            Text(
-                                              'Copy Link',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w800,
-                                                color: AppTheme.primary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'You can paste any API key below. Lodix automatically identifies your provider and configures the optimal model:',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textSecondary,
+                                height: 1.3,
                               ),
                             ),
                             const SizedBox(height: 10),
-                            _buildGuideStep(
-                              stepNum: '2',
-                              title:
-                                  'Sign in with any standard Google or Gmail account.',
-                            ),
-                            const SizedBox(height: 10),
-                            _buildGuideStep(
-                              stepNum: '3',
-                              title:
-                                  'Click the blue "Get API key" button in the top left, then "Create API key in new project".',
-                            ),
-                            const SizedBox(height: 10),
-                            _buildGuideStep(
-                              stepNum: '4',
-                              title:
-                                  'Copy your new API key (starts with "AIzaSy...") and paste it below.',
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _buildProviderPill(
+                                  title: 'Google AI Studio (Free)',
+                                  subtitle: 'AIza... (Gemini 2.0 Flash)',
+                                  url: 'https://aistudio.google.com/app/apikey',
+                                  color: const Color(0xFF1A73E8),
+                                  isRecommended: true,
+                                ),
+                                _buildProviderPill(
+                                  title: 'Groq (Free & Ultra Fast)',
+                                  subtitle: 'gsk_... (Llama 3.3)',
+                                  url: 'https://console.groq.com/keys',
+                                  color: const Color(0xFFF55036),
+                                  isRecommended: true,
+                                ),
+                                _buildProviderPill(
+                                  title: 'OpenAI Platform',
+                                  subtitle: 'sk-... (ChatGPT)',
+                                  url: 'https://platform.openai.com/api-keys',
+                                  color: const Color(0xFF10A37F),
+                                  isRecommended: false,
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -287,14 +180,15 @@ class GeminiApiKeyDialog {
                       TextField(
                         controller: keyCtrl,
                         obscureText: obscureText,
+                        onChanged: (_) => setModalState(() {}),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'AIzaSy...',
-                          labelText: 'Google Gemini API Key',
+                          hintText: 'Paste any API key (AIza..., gsk_..., sk-...)',
+                          labelText: 'Lodix AI API Key',
                           prefixIcon: const Icon(Icons.key_rounded,
                               size: 18, color: AppTheme.primary),
                           suffixIcon: Row(
@@ -308,11 +202,9 @@ class GeminiApiKeyDialog {
                                   size: 18,
                                   color: AppTheme.textMuted,
                                 ),
-                                tooltip:
-                                    obscureText ? 'Show key' : 'Hide key',
+                                tooltip: obscureText ? 'Show key' : 'Hide key',
                                 onPressed: () {
-                                  setModalState(
-                                      () => obscureText = !obscureText);
+                                  setModalState(() => obscureText = !obscureText);
                                 },
                               ),
                               IconButton(
@@ -333,30 +225,35 @@ class GeminiApiKeyDialog {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 8),
+
+                      // Real-time Provider Detection Badge
+                      _buildDetectionBanner(detected, currentKey),
+
                       const SizedBox(height: 12),
 
-                      // Personal Key Info Banner
+                      // Privacy Note
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(14),
+                          color: AppTheme.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: AppTheme.primary.withValues(alpha: 0.2)),
+                              color: AppTheme.primary.withValues(alpha: 0.15)),
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.lock_person_rounded,
-                                size: 18, color: AppTheme.primary),
-                            SizedBox(width: 10),
+                            Icon(Icons.shield_outlined,
+                                size: 16, color: AppTheme.primary),
+                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Your key is stored only on this device. Each teacher uses their own personal API key.',
+                                'Private to your device. Your API key is stored safely on this phone only and never shared with other users or students.',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: AppTheme.primary,
-                                  height: 1.4,
+                                  height: 1.35,
                                 ),
                               ),
                             ),
@@ -365,19 +262,18 @@ class GeminiApiKeyDialog {
                       ),
 
                       if (localError != null || gemini.errorMessage != null) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color:
-                                AppTheme.statusMissing.withValues(alpha: 0.1),
+                            color: AppTheme.statusMissing.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
                             children: [
                               const Icon(Icons.error_outline_rounded,
                                   size: 16, color: AppTheme.statusMissing),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   localError ?? gemini.errorMessage ?? '',
@@ -454,8 +350,10 @@ class GeminiApiKeyDialog {
                                         const Duration(seconds: 7),
                                         onTimeout: () async {
                                           // Safety fallback: save locally if validation times out
-                                          final prefs = await SharedPreferences.getInstance();
-                                          await prefs.setString('teacher_gemini_api_key', entered);
+                                          final prefs =
+                                              await SharedPreferences.getInstance();
+                                          await prefs.setString(
+                                              'teacher_gemini_api_key', entered);
                                           return true;
                                         },
                                       );
@@ -463,14 +361,22 @@ class GeminiApiKeyDialog {
                                       setModalState(() => isSubmitting = false);
 
                                       if (success && sheetCtx.mounted) {
+                                        final provider =
+                                            GeminiService.detectProvider(entered);
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
+                                          SnackBar(
                                             content: Row(
                                               children: [
-                                                Icon(Icons.check_circle_rounded,
-                                                    color: Colors.white, size: 18),
-                                                SizedBox(width: 8),
-                                                Text('Gemini API Key saved and activated!'),
+                                                const Icon(
+                                                    Icons.check_circle_rounded,
+                                                    color: Colors.white,
+                                                    size: 18),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Lodix AI activated (${provider.displayName})!',
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                             backgroundColor: AppTheme.statusGraded,
@@ -480,7 +386,7 @@ class GeminiApiKeyDialog {
                                       } else {
                                         setModalState(() {
                                           localError = gemini.errorMessage ??
-                                              'Failed to connect to Google Gemini. Please check your key.';
+                                              'Failed to connect to AI provider. Please check your key.';
                                         });
                                       }
                                     } catch (e) {
@@ -520,51 +426,165 @@ class GeminiApiKeyDialog {
     return result == true;
   }
 
-  static Widget _buildGuideStep({
-    required String stepNum,
-    required String title,
-    Widget? action,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
+  static Widget _buildDetectionBanner(AiProvider provider, String key) {
+    if (key.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.auto_awesome_outlined, size: 14, color: AppTheme.textMuted),
+            SizedBox(width: 6),
+            Text(
+              'Supports Google Gemini, Groq, OpenAI, Claude, DeepSeek & more',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Color color;
+    IconData icon;
+    String label;
+
+    switch (provider) {
+      case AiProvider.gemini:
+        color = const Color(0xFF1A73E8);
+        icon = Icons.check_circle_rounded;
+        label = 'Auto-detected: Google Gemini (Gemini 2.0 Flash)';
+        break;
+      case AiProvider.groq:
+        color = const Color(0xFFF55036);
+        icon = Icons.bolt_rounded;
+        label = 'Auto-detected: Groq (Llama 3.3 70B • Ultra Fast)';
+        break;
+      case AiProvider.openai:
+        color = const Color(0xFF10A37F);
+        icon = Icons.check_circle_rounded;
+        label = 'Auto-detected: OpenAI (ChatGPT gpt-4o-mini)';
+        break;
+      case AiProvider.anthropic:
+        color = const Color(0xFFD97706);
+        icon = Icons.psychology_rounded;
+        label = 'Auto-detected: Anthropic Claude (Claude 3.5 Haiku)';
+        break;
+      case AiProvider.openrouter:
+        color = const Color(0xFF6366F1);
+        icon = Icons.language_rounded;
+        label = 'Auto-detected: OpenRouter (Multi-model)';
+        break;
+      case AiProvider.unknown:
+        color = AppTheme.primary;
+        icon = Icons.key_rounded;
+        label = 'Universal AI Key: Will route to active endpoint';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Expanded(
             child: Text(
-              stepNum,
-              style: const TextStyle(
+              label,
+              style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.primary,
+                color: color,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildProviderPill({
+    required String title,
+    required String subtitle,
+    required String url,
+    required Color color,
+    required bool isRecommended,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        try {
+          final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (!launched) await launchUrl(uri, mode: LaunchMode.platformDefault);
+        } catch (_) {}
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.06),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textMain,
-                  height: 1.3,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textMain,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.open_in_new_rounded, size: 10, color: AppTheme.textMuted),
+                  ],
                 ),
-              ),
-              ?action,
-            ],
-          ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 9.5,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

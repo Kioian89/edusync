@@ -104,7 +104,7 @@ class _TeacherHomeState extends State<TeacherHome> {
           CustomNavItem(
             icon: Icons.auto_awesome_outlined,
             selectedIcon: Icons.auto_awesome_rounded,
-            label: 'Gemini',
+            label: 'Lodix',
           ),
           CustomNavItem(
             icon: Icons.person_outline_rounded,

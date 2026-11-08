@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/gemini_assistant_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/gemini_api_key_dialog.dart';
 
 class GeminiAssistantScreen extends StatefulWidget {
   const GeminiAssistantScreen({super.key});
@@ -27,8 +27,10 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<AuthProvider>().currentUser;
-      context.read<GeminiAssistantProvider>().init(userId: user?.id);
+      if (mounted) {
+        final user = context.read<AuthProvider>().currentUser;
+        context.read<GeminiAssistantProvider>().init(userId: user?.id);
+      }
     });
   }
 
@@ -52,207 +54,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
   }
 
   void _showApiKeyDialog(BuildContext context, GeminiAssistantProvider gemini) {
-    final keyCtrl = TextEditingController(text: gemini.apiKey ?? '');
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) {
-        return StatefulBuilder(
-          builder: (ctx2, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx2).viewInsets.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppTheme.borderLight,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.primaryGradient,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Gemini AI Configuration',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.textMain,
-                                ),
-                              ),
-                              Text(
-                                'Powered by Google Gemini & Firebase',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: keyCtrl,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        hintText: 'AIzaSy...',
-                        labelText: 'Google Gemini API Key',
-                        helperText:
-                            'Get a free API key at: aistudio.google.com',
-                        helperMaxLines: 2,
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.paste_rounded, size: 20),
-                          tooltip: 'Paste from clipboard',
-                          onPressed: () async {
-                            final data = await Clipboard.getData('text/plain');
-                            if (data?.text != null) {
-                              keyCtrl.text = data!.text!.trim();
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Personal key info — not shared with other users
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppTheme.primary.withValues(alpha: 0.2)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.lock_person_rounded,
-                              size: 16, color: AppTheme.primary),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Your key is private — stored only on your device and not shared with other users.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.primary,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    if (gemini.errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          gemini.errorMessage!,
-                          style: const TextStyle(
-                            color: AppTheme.statusMissing,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    Row(
-                      children: [
-                        if (gemini.hasKey)
-                          TextButton(
-                            onPressed: () async {
-                              await gemini.removeApiKey();
-                              if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-                            },
-                            child: const Text(
-                              'Remove Key',
-                              style: TextStyle(
-                                color: AppTheme.statusMissing,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        const Spacer(),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                          ),
-                          onPressed: isSubmitting
-                              ? null
-                              : () async {
-                                  setModalState(() => isSubmitting = true);
-                                  final entered = keyCtrl.text.trim();
-                                  final success = await gemini.setApiKey(entered);
-                                  setModalState(() => isSubmitting = false);
-                                  if (success && sheetCtx.mounted) {
-                                    Navigator.pop(sheetCtx);
-                                  }
-                                },
-                          child: isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  'Save & Connect',
-                                  style: TextStyle(fontWeight: FontWeight.w800),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+    GeminiApiKeyDialog.show(context);
   }
 
   void _sendMessage() {
@@ -273,44 +75,52 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final activeClass = auth.teacherClasses.isNotEmpty
+        ? auth.teacherClasses.first.displayName
+        : null;
+
     final gemini = context.watch<GeminiAssistantProvider>();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        titleSpacing: 0,
+        titleSpacing: 16,
+        elevation: 0,
+        backgroundColor: Colors.white,
         title: InkWell(
           onTap: () => _showApiKeyDialog(context, gemini),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
             child: Row(
               children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Center(
-                    child: Icon(
+                Hero(
+                  tag: 'lodix_ai_avatar',
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: AppTheme.subtlePillShadow,
+                    ),
+                    child: const Icon(
                       Icons.auto_awesome_rounded,
                       color: Colors.white,
                       size: 18,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Gemini Assistant',
+                        'Lodix Assistant',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w900,
                           color: AppTheme.textMain,
                         ),
@@ -329,16 +139,14 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                                   : AppTheme.statusPending,
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
-                              gemini.isFirebaseAiConnected && !gemini.hasPersonalKey
-                                  ? 'School AI Active'
-                                  : gemini.hasKey
-                                      ? 'Connected • AI Copilot'
-                                      : 'Tap to configure API Key',
+                              gemini.hasKey
+                                  ? 'Connected • ${gemini.providerDisplayName}'
+                                  : 'Tap to configure AI Key',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 10.5,
                                 color: gemini.hasKey
                                     ? AppTheme.statusGraded
                                     : AppTheme.statusPending,
@@ -364,7 +172,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
               size: 20,
               color: gemini.hasKey ? AppTheme.primary : AppTheme.statusPending,
             ),
-            tooltip: gemini.hasKey ? 'Gemini AI Settings' : 'Configure API Key',
+            tooltip: gemini.hasKey ? 'Lodix AI Settings' : 'Configure AI Key',
             onPressed: () => _showApiKeyDialog(context, gemini),
           ),
           if (gemini.messages.isNotEmpty)
@@ -379,13 +187,35 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
       ),
       body: Column(
         children: [
+          // Class context pill if classes exist
+          if (activeClass != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              color: AppTheme.primary.withValues(alpha: 0.05),
+              child: Row(
+                children: [
+                  const Icon(Icons.class_rounded, size: 13, color: AppTheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Class context: $activeClass',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // If no API Key is set, show a prominent helper banner
           if (!gemini.hasKey)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: AppTheme.cyanGradient,
+                gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(22),
                 boxShadow: AppTheme.floatingShadow,
               ),
@@ -404,24 +234,25 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  Expanded(
+                  const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Add Your Gemini API Key',
+                        Text(
+                          'Configure Lodix AI Key',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
-                          'Use your own free Google Gemini key to activate custom AI tutoring & test generation.',
+                          'Paste your free Google Gemini, Groq, or OpenAI key to activate instant AI lesson planning and test generation.',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white,
                             fontSize: 11,
+                            height: 1.3,
                           ),
                         ),
                       ],
@@ -496,7 +327,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'Gemini is thinking...',
+                          'Lodix is thinking...',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -582,7 +413,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                       maxLines: 4,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                        hintText: 'Ask Gemini anything for your class...',
+                        hintText: 'Ask Lodix anything for your class...',
                         hintStyle: TextStyle(
                           fontSize: 13,
                           color: AppTheme.textMuted,
@@ -649,10 +480,10 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'How can I help you today, Teacher?',
+            'Meet Lodix, Your AI Copilot!',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 19,
               fontWeight: FontWeight.w900,
               color: AppTheme.textMain,
             ),
@@ -764,7 +595,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  msg.isUser ? 'You' : 'Gemini AI',
+                  msg.isUser ? 'You' : 'Lodix AI',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
@@ -791,4 +622,3 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
 
 // Controller helper hook
 class TextEditingControllerScrollHook extends ScrollController {}
-

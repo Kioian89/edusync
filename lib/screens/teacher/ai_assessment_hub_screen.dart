@@ -301,7 +301,7 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
               gemini.hasKey ? Icons.tune_rounded : Icons.key_rounded,
               color: gemini.hasKey ? AppTheme.primary : AppTheme.statusPending,
             ),
-            tooltip: gemini.hasKey ? 'Gemini AI Settings' : 'Configure Gemini API Key',
+            tooltip: gemini.hasKey ? 'Lodix AI Settings' : 'Configure Lodix AI Key',
             onPressed: () => GeminiApiKeyDialog.show(context),
           ),
           const SizedBox(width: 4),

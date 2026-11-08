@@ -129,9 +129,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
             _buildSection(
               icon: Icons.auto_awesome_rounded,
-              title: '4. Google Gemini AI Pedagogical Assistant',
+              title: '4. Lodix AI Pedagogical Assistant (Google Gemini & Universal Engine)',
               content:
-                  'The built-in Gemini Assistant is powered by Google Generative AI to assist teachers with lesson outlines, '
+                  'The built-in Lodix AI Assistant is powered by Google Gemini AI, Groq, and supported AI providers to assist teachers with lesson outlines, '
                   'quiz generation, and rubric development. Personal identifiable student data is never sent to AI models. '
                   'AI-generated suggestions should be reviewed by the educator prior to assignment distribution.',
             ),

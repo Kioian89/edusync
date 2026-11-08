@@ -2,7 +2,7 @@ name: edusync
 description: "EduSync - An Android mobile app for classroom activity and grade management for teachers and students."
 publish_to: 'none'
 
-version: 1.6.8+1
+version: 1.6.9+1
 
 environment:
   sdk: ^3.13.5

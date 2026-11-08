@@ -36,7 +36,7 @@ It streamlines the entire classroom experience — from class enrollment via QR 
 |---|---|
 | 📋 **Class Management** | Create multiple class sections with QR codes for instant student enrollment |
 | 📝 **Activity Builder** | Create quizzes, assignments, essays, and projects with deadlines and point values |
-| 🤖 **AI Quiz Generator** | Generate quiz questions from any topic using Google Gemini AI (free API key) |
+| 🤖 **Lodix AI Assistant** | Generate quiz questions, lesson outlines, and rubrics from any topic using Lodix AI |
 | 📊 **Grade Dashboard** | View all student submissions, grade them, and track class progress at a glance |
 | 📢 **Announcements** | Post class-wide announcements that students see instantly |
 | 📸 **Editable Profile** | Upload a profile photo to personalize your teacher account |
@@ -54,7 +54,7 @@ It streamlines the entire classroom experience — from class enrollment via QR 
 ### 🔧 Technical Highlights
 - 📱 **Android APK** — Native Android experience via Flutter
 - 🔥 **Firebase** — Real-time Firestore database, Authentication, Cloud Storage
-- 🤖 **Gemini 2.0 Flash** — AI-powered lesson analysis and quiz generation (free tier)
+- 🤖 **Lodix Universal AI Engine** — Multi-provider AI (Google Gemini, Groq, OpenAI, Claude, DeepSeek) with automatic key detection
 - 📡 **Shorebird** — Over-the-air (OTA) code push for instant updates without reinstalling
 - 🔔 **FCM Push Notifications** — Instant alerts for new activities and grades
 - 📷 **QR Code Scanner** — Built-in camera scanner for instant class enrollment

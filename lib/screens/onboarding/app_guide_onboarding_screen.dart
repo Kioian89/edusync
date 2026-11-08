@@ -67,14 +67,14 @@ class _AppGuideOnboardingScreenState extends State<AppGuideOnboardingScreen> {
     },
     {
       'step': 'STEP 4 OF 5',
-      'title': 'AI Teaching Copilot (Google Gemini)',
-      'subtitle': 'Accelerate lesson prep and assessment with Google AI.',
+      'title': 'Lodix AI Teaching Copilot',
+      'subtitle': 'Accelerate lesson prep and assessment with Universal AI (Gemini, Groq, OpenAI).',
       'icon': Icons.auto_awesome_rounded,
       'gradient': AppTheme.orbitGradient,
       'teacherBullets': [
-        'Generate 5-question quizzes, rubrics, and lesson plans instantly.',
-        'Multi-model failover with Gemini 2.0 / Flash latest for high reliability.',
-        'Central school AI key sharing via Firebase Cloud Firestore.',
+        'Generate 10-type quizzes, rubrics, and lesson plans instantly.',
+        'Universal multi-provider support: Google Gemini, Groq, OpenAI, Claude & more.',
+        'Private key stored safely on your phone.',
       ],
       'studentBullets': [
         'Receive constructive, objective AI-assisted feedback from teachers.',

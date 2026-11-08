@@ -53,6 +53,12 @@ class GeminiAssistantProvider extends ChangeNotifier {
   List<GeminiMessage> get messages => _messages;
   String get activeModel => _activeModel;
 
+  /// Detects which AI provider this key belongs to (Gemini, OpenAI, Groq, Claude, etc.)
+  AiProvider get detectedProvider =>
+      apiKey != null ? GeminiService.detectProvider(apiKey!) : AiProvider.unknown;
+
+  String get providerDisplayName => detectedProvider.displayName;
+
   /// Pref key scoped to this teacher's userId so keys never bleed across accounts.
   String _prefKey(String uid) => 'gemini_api_key_$uid';
 
@@ -116,7 +122,7 @@ class GeminiAssistantProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } else {
-      _errorMessage = 'Invalid Gemini API key or unable to reach Google servers.';
+      _errorMessage = 'Invalid API key or unable to reach AI servers. Please check your key.';
       notifyListeners();
       return false;
     }
@@ -135,7 +141,7 @@ class GeminiAssistantProvider extends ChangeNotifier {
     final effectiveKey = apiKey ?? '';
     if (!hasKey || text.trim().isEmpty) {
       if (!hasKey) {
-        _errorMessage = 'Gemini API key is required. Tap the key icon to connect.';
+        _errorMessage = 'Lodix AI key is required. Tap the key icon to connect.';
         notifyListeners();
       }
       return;
@@ -172,7 +178,7 @@ class GeminiAssistantProvider extends ChangeNotifier {
     }).toList();
 
     final systemInstruction =
-        'You are an expert pedagogical AI teaching assistant for EduSync. '
+        'You are Lodix, an expert pedagogical AI teaching assistant for EduSync. '
         'Assist the teacher with creating classroom activities, quizzes, lesson plans, rubrics, '
         'and providing constructive feedback for students. Keep answers structured, practical, and clear.'
         '${classContext != null ? "\nClass Context: $classContext" : ""}';
