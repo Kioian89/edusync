@@ -103,7 +103,7 @@ class FirebaseAiService {
   /// Sets or updates the central Gemini AI configuration in Firebase (Admin/Teacher tool).
   static Future<void> setFirebaseGeminiConfig({
     required String apiKey,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-2.0-flash',
     bool isEnabled = true,
   }) async {
     final db = _db;

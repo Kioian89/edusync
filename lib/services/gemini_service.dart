@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'firebase_ai_service.dart';
 
 class GeminiService {
-  static const String defaultModelName = 'gemini-1.5-flash';
+  static const String defaultModelName = 'gemini-2.0-flash';
 
   /// Default API key loaded securely from compile-time dart-define
   static String get defaultApiKey {
@@ -94,9 +94,9 @@ class GeminiService {
   }) async {
     final candidateModels = [
       modelName,
-      if (modelName != 'gemini-1.5-flash') 'gemini-1.5-flash',
       if (modelName != 'gemini-2.0-flash') 'gemini-2.0-flash',
-      if (modelName != 'gemini-1.5-pro') 'gemini-1.5-pro',
+      if (modelName != 'gemini-2.0-flash-lite') 'gemini-2.0-flash-lite',
+      if (modelName != 'gemini-1.5-flash') 'gemini-1.5-flash',
     ];
 
     String lastError = '';

@@ -140,7 +140,7 @@ class GeminiAssistantProvider extends ChangeNotifier {
   }
 
   /// Saves the Gemini API key centrally into Firebase (for all teachers in school)
-  Future<void> setFirebaseCentralKey(String key, {String model = 'gemini-1.5-flash'}) async {
+  Future<void> setFirebaseCentralKey(String key, {String model = 'gemini-2.0-flash'}) async {
     final clean = key.trim();
     if (clean.isEmpty) return;
 
