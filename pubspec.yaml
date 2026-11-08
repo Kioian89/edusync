@@ -1,5 +1,5 @@
 name: edusync
-description: "EduSync - A Web-based Activity and Grade Management System for Teachers and Students."
+description: "EduSync - An Android mobile app for classroom activity and grade management for teachers and students."
 publish_to: 'none'
 
 version: 1.6.8+1
@@ -44,4 +44,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - shorebird.yaml
