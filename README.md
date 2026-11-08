@@ -8,6 +8,7 @@
 
 [![Release](https://img.shields.io/github/v/release/Kioian89/edusync?color=5B2D8E&label=Latest%20Release)](https://github.com/Kioian89/edusync/releases/latest)
 [![Build](https://github.com/Kioian89/edusync/actions/workflows/release.yml/badge.svg)](https://github.com/Kioian89/edusync/actions/workflows/release.yml)
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://android.com)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase)](https://firebase.google.com)
 [![License](https://img.shields.io/github/license/Kioian89/edusync?color=5B2D8E)](./LICENSE)
@@ -20,9 +21,9 @@
 
 ## 📖 About EduSync
 
-**EduSync** is a free, open-source Android classroom management app built with Flutter and Firebase, designed specifically for teachers and students in Philippine schools.
+**EduSync** is a free, open-source **Android mobile app** built with Flutter and Firebase, designed specifically for teachers and students in Philippine schools.
 
-It streamlines the entire classroom experience — from class enrollment via QR code, to AI-powered quiz generation, to real-time grade tracking — all in one clean, offline-capable mobile app.
+It streamlines the entire classroom experience — from class enrollment via QR code scan, to AI-powered quiz generation, to real-time grade tracking — all in one clean, offline-capable **Android app** installed directly on your phone.
 
 > **Built for teachers who want less paperwork and more teaching.**
 
@@ -51,10 +52,12 @@ It streamlines the entire classroom experience — from class enrollment via QR 
 | 📸 **Editable Profile** | Add a profile photo to your student account |
 
 ### 🔧 Technical Highlights
+- 📱 **Android APK** — Native Android experience via Flutter
 - 🔥 **Firebase** — Real-time Firestore database, Authentication, Cloud Storage
 - 🤖 **Gemini 2.0 Flash** — AI-powered lesson analysis and quiz generation (free tier)
-- 📡 **Shorebird** — Over-the-air (OTA) code push for instant updates
+- 📡 **Shorebird** — Over-the-air (OTA) code push for instant updates without reinstalling
 - 🔔 **FCM Push Notifications** — Instant alerts for new activities and grades
+- 📷 **QR Code Scanner** — Built-in camera scanner for instant class enrollment
 - 🎨 **Royal Purple Theme** — Clean, modern Material 3 UI
 - 📶 **Offline Cache** — Works with limited connectivity using local SharedPreferences cache
 
@@ -62,15 +65,16 @@ It streamlines the entire classroom experience — from class enrollment via QR 
 
 ## 📲 Download & Install
 
-### Latest Release
+### Latest Release — Android APK
 👉 **[Download edusync.apk](https://github.com/Kioian89/edusync/releases/latest)**
 
-1. Download `edusync.apk` from the latest release
-2. On your Android phone: **Settings → Security → Allow unknown sources**
-3. Open the downloaded APK and tap **Install**
-4. Launch **EduSync** and register as a Teacher or Student
+1. On your **Android phone**, open the link above and download `edusync.apk`
+2. Go to **Settings → Security** (or Privacy) → enable **"Install unknown apps"**
+3. Open the downloaded APK file and tap **Install**
+4. Launch **EduSync** and register as a **Teacher** or **Student**
 
-> **Requires Android 6.0 (API 23) or higher**
+> ⚠️ **Android only** — requires **Android 6.0 (API 23) or higher**
+> iOS is not currently supported.
 
 ---
 
@@ -78,8 +82,8 @@ It streamlines the entire classroom experience — from class enrollment via QR 
 
 ### Requirements
 - [Flutter SDK](https://flutter.dev/docs/get-started/install) (see `pubspec.yaml` for version)
-- [Firebase CLI](https://firebase.google.com/docs/cli)
-- Android Studio or VS Code
+- **Android Studio** or VS Code with Flutter extension
+- An **Android device** or emulator (API 23+)
 - A Firebase project with Firestore, Auth, Storage, and Messaging enabled
 
 ### Setup
@@ -95,7 +99,7 @@ flutter pub get
 # 3. Configure Firebase
 # Replace android/app/google-services.json with your own Firebase config
 
-# 4. Run the app
+# 4. Run on a connected Android device or emulator
 flutter run
 ```
 
