@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'providers/auth_provider.dart';
 import 'providers/activity_provider.dart';
 import 'providers/gemini_assistant_provider.dart';
+import 'providers/connectivity_provider.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/notification_service.dart';
+import 'widgets/connectivity_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,7 @@ class EduSyncApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()..init()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ActivityProvider()),
         ChangeNotifierProvider(create: (_) => GeminiAssistantProvider()),
@@ -34,6 +37,7 @@ class EduSyncApp extends StatelessWidget {
       child: MaterialApp(
         title: 'EduSync',
         debugShowCheckedModeBanner: false,
+        builder: (context, child) => ConnectivityOverlay(child: child),
         theme: ThemeData(
           useMaterial3: true,
           scaffoldBackgroundColor: AppTheme.background,

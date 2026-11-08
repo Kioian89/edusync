@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../../models/user.dart';
 import 'login_screen.dart';
 
@@ -32,6 +33,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final connectivity = context.read<ConnectivityProvider>();
+    if (!connectivity.isOnline) {
+      setState(() {
+        _error = 'No internet connection. Please connect to Wi-Fi or mobile data to register.';
+      });
+      return;
+    }
+
     setState(() { _loading = true; _error = null; });
 
     final auth = context.read<AuthProvider>();
