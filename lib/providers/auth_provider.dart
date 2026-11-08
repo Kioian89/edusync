@@ -335,6 +335,48 @@ class AuthProvider extends ChangeNotifier {
     return cls;
   }
 
+  /// Update/Edit an existing class group
+  Future<ClassGroup?> updateClass({
+    required String classId,
+    required String subject,
+    required String section,
+  }) async {
+    final idx = _classes.indexWhere((c) => c.id == classId);
+    if (idx == -1) return null;
+
+    final existing = _classes[idx];
+    final updated = ClassGroup(
+      id: existing.id,
+      name: '$subject - $section',
+      subject: subject,
+      section: section,
+      teacherId: existing.teacherId,
+      studentIds: existing.studentIds,
+    );
+
+    _classes[idx] = updated;
+    await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.saveClass(updated);
+    }
+    notifyListeners();
+    return updated;
+  }
+
+  /// Delete a class group
+  Future<bool> deleteClass(String classId) async {
+    final idx = _classes.indexWhere((c) => c.id == classId);
+    if (idx == -1) return false;
+
+    _classes.removeAt(idx);
+    await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.deleteClass(classId);
+    }
+    notifyListeners();
+    return true;
+  }
+
   /// Look up class by ID locally or from Firestore
   Future<ClassGroup?> fetchClassById(String classId) async {
     final localIdx = _classes.indexWhere((c) => c.id == classId);

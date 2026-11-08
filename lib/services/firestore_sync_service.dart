@@ -80,6 +80,18 @@ class FirestoreSyncService {
     }
   }
 
+  /// Delete a class by ID.
+  static Future<void> deleteClass(String classId) async {
+    final db = _db;
+    if (db == null) return;
+
+    try {
+      await db.collection('classes').doc(classId).delete();
+    } catch (e) {
+      debugPrint('Firestore deleteClass error: $e');
+    }
+  }
+
   /// Fetch a single class by ID.
   static Future<ClassGroup?> getClassById(String classId) async {
     final db = _db;

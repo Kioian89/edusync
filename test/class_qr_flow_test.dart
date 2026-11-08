@@ -56,6 +56,23 @@ void main() {
         studentId: student.id,
       );
       expect(duplicateErr, contains('already enrolled'));
+
+      // Switch back to teacher and test editing the class
+      await auth.login('teacher@edusync.com', 'teacher123');
+      final edited = await auth.updateClass(
+        classId: newCls.id,
+        subject: 'Advanced Mathematics',
+        section: 'Room 301',
+      );
+      expect(edited, isNotNull);
+      expect(edited!.subject, equals('Advanced Mathematics'));
+      expect(edited.section, equals('Room 301'));
+      expect(edited.displayName, equals('Advanced Mathematics - Room 301'));
+
+      // Test deleting the class
+      final deleted = await auth.deleteClass(newCls.id);
+      expect(deleted, isTrue);
+      expect(auth.classes.any((c) => c.id == newCls.id), isFalse);
     });
 
     testWidgets('ClassQrDialog renders QR Code and Class Details', (tester) async {
