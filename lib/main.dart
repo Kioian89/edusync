@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/activity_provider.dart';
 import 'providers/gemini_assistant_provider.dart';
 import 'providers/connectivity_provider.dart';
+import 'providers/assessment_provider.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/notification_service.dart';
@@ -33,6 +34,7 @@ class EduSyncApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ActivityProvider()),
         ChangeNotifierProvider(create: (_) => GeminiAssistantProvider()),
+        ChangeNotifierProvider(create: (_) => AssessmentProvider()..init()),
       ],
       child: MaterialApp(
         title: 'EduSync',

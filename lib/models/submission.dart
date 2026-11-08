@@ -13,6 +13,7 @@ class Submission {
   String? feedback;
   final List<String> fileNames;
   final String? studentAnswerSheet; // In-app completed answer sheet content
+  final String? assessmentSubmissionData; // Assessment submission JSON
 
   Submission({
     required this.id,
@@ -26,9 +27,12 @@ class Submission {
     List<String>? fileNames,
     String? fileName,
     this.studentAnswerSheet,
+    this.assessmentSubmissionData,
   }) : fileNames = fileNames ?? (fileName != null ? [fileName] : []);
 
   String? get fileName => fileNames.isNotEmpty ? fileNames.first : null;
+  bool get hasAssessmentSubmission =>
+      assessmentSubmissionData != null && assessmentSubmissionData!.isNotEmpty;
 
   Color get statusColor {
     switch (status) {
@@ -81,6 +85,7 @@ class Submission {
         'fileNames': fileNames,
         'fileName': fileName,
         'studentAnswerSheet': studentAnswerSheet,
+        'assessmentSubmissionData': assessmentSubmissionData,
       };
 
   factory Submission.fromMap(Map<String, dynamic> map) {
@@ -106,6 +111,7 @@ class Submission {
       fileNames: parsedFiles,
       fileName: map['fileName'],
       studentAnswerSheet: map['studentAnswerSheet'],
+      assessmentSubmissionData: map['assessmentSubmissionData'],
     );
   }
 }

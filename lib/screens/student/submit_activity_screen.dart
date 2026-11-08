@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
+import '../../models/assessment.dart';
 import '../../models/submission.dart';
 import '../../widgets/status_badge.dart';
 import '../../theme/app_theme.dart';
+import 'student_assessment_screen.dart';
 
 class SubmitActivityScreen extends StatefulWidget {
   final Activity activity;
@@ -289,6 +291,85 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
                 ],
               ),
             ),
+
+            // Interactive AI Assessment Card (if assessmentData exists)
+            if (act.isAiAssessment) ...[
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: AppTheme.heroShadow,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.auto_awesome_rounded,
+                            color: Colors.white, size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'Interactive AI Assessment',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'This assessment is auto-checked in real-time. Answer questions, submit, and see your score instantly.',
+                      style: TextStyle(
+                          color: Colors.white70, fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppTheme.primary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () {
+                          try {
+                            final assessment =
+                                Assessment.fromJson(act.assessmentData!);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => StudentAssessmentScreen(
+                                  activity: act,
+                                  assessment: assessment,
+                                  existingSubmission: sub,
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Failed to load assessment: $e')),
+                            );
+                          }
+                        },
+                        child: Text(
+                          sub != null
+                              ? 'View My Assessment Results'
+                              : 'Take Interactive Assessment Now',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 18),
 

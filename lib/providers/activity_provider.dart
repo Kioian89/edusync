@@ -168,6 +168,7 @@ class ActivityProvider extends ChangeNotifier {
     String? attachmentName,
     String? answerSheetTemplate,
     String? teacherAnswerKey,
+    String? assessmentData,
     required List<String> studentIds,
   }) async {
     final activity = Activity(
@@ -184,6 +185,7 @@ class ActivityProvider extends ChangeNotifier {
       attachmentName: attachmentName,
       answerSheetTemplate: answerSheetTemplate,
       teacherAnswerKey: teacherAnswerKey,
+      assessmentData: assessmentData,
     );
     _activities.add(activity);
 
@@ -253,6 +255,42 @@ class ActivityProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> publishAssessmentActivity(Activity activity, {List<String> studentIds = const []}) async {
+    final existingIdx = _activities.indexWhere((a) => a.id == activity.id);
+    if (existingIdx != -1) {
+      _activities[existingIdx] = activity;
+    } else {
+      _activities.add(activity);
+    }
+
+    final newSubmissions = <Submission>[];
+    for (final studentId in studentIds) {
+      final exists = _submissions.any(
+        (s) => s.activityId == activity.id && s.studentId == studentId,
+      );
+      if (!exists) {
+        final sub = Submission(
+          id: _uuid.v4(),
+          activityId: activity.id,
+          studentId: studentId,
+          studentName: '',
+          status: SubmissionStatus.pending,
+        );
+        _submissions.add(sub);
+        newSubmissions.add(sub);
+      }
+    }
+
+    await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.saveActivity(activity);
+      for (final sub in newSubmissions) {
+        await FirestoreSyncService.saveSubmission(sub);
+      }
+    }
+    notifyListeners();
+  }
+
   Future<void> submitActivity({
     required String activityId,
     required String studentId,
@@ -260,6 +298,9 @@ class ActivityProvider extends ChangeNotifier {
     List<String>? fileNames,
     String? fileName,
     String? studentAnswerSheet,
+    String? assessmentSubmissionData,
+    double? grade,
+    SubmissionStatus status = SubmissionStatus.submitted,
   }) async {
     final idx = _submissions
         .indexWhere((s) => s.activityId == activityId && s.studentId == studentId);
@@ -271,11 +312,13 @@ class ActivityProvider extends ChangeNotifier {
         activityId: activityId,
         studentId: studentId,
         studentName: studentName,
-        status: SubmissionStatus.submitted,
+        status: status,
         submittedAt: DateTime.now(),
+        grade: grade ?? _submissions[idx].grade,
         fileNames: fileNames,
         fileName: fileName,
         studentAnswerSheet: studentAnswerSheet,
+        assessmentSubmissionData: assessmentSubmissionData,
       );
       _submissions[idx] = targetSub;
     } else {
@@ -284,11 +327,13 @@ class ActivityProvider extends ChangeNotifier {
         activityId: activityId,
         studentId: studentId,
         studentName: studentName,
-        status: SubmissionStatus.submitted,
+        status: status,
         submittedAt: DateTime.now(),
+        grade: grade,
         fileNames: fileNames,
         fileName: fileName,
         studentAnswerSheet: studentAnswerSheet,
+        assessmentSubmissionData: assessmentSubmissionData,
       );
       _submissions.add(targetSub);
     }

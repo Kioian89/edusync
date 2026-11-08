@@ -8,6 +8,7 @@ import '../../models/class_group.dart';
 import '../../services/ai_activity_helper.dart';
 import '../../providers/gemini_assistant_provider.dart';
 import '../../theme/app_theme.dart';
+import 'ai_assessment_hub_screen.dart';
 
 class ActivityCreateScreen extends StatefulWidget {
   final ClassGroup classGroup;
@@ -221,6 +222,30 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                 }).toList(),
               ),
               const SizedBox(height: 12),
+              // AI Google Forms Quiz Studio Button
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AiAssessmentHubScreen(
+                        preselectedClass: widget.classGroup,
+                      ),
+                    ),
+                  );
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.psychology_rounded, size: 20),
+                label: const Text(
+                  'Open AI Assessment Studio (Google Forms Quiz)',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 10),
               // AI Generator Trigger Button
               OutlinedButton.icon(
                 onPressed: _generateWithAi,

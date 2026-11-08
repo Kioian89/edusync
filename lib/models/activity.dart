@@ -15,6 +15,7 @@ class Activity {
   final List<String> attachments;
   final String? answerSheetTemplate; // In-app answer sheet format/template
   final String? teacherAnswerKey;    // Teacher's answer key for grading
+  final String? assessmentData;      // AI Assessment JSON configuration
 
   Activity({
     required this.id,
@@ -30,9 +31,11 @@ class Activity {
     String? attachmentName,
     this.answerSheetTemplate,
     this.teacherAnswerKey,
+    this.assessmentData,
   }) : attachments = attachments ?? (attachmentName != null ? [attachmentName] : []);
 
   bool get hasAnswerSheetTemplate => answerSheetTemplate != null && answerSheetTemplate!.isNotEmpty;
+  bool get isAiAssessment => assessmentData != null && assessmentData!.isNotEmpty;
 
   String? get attachmentName => attachments.isNotEmpty ? attachments.first : null;
 
@@ -86,6 +89,7 @@ class Activity {
         'attachmentName': attachmentName,
         'answerSheetTemplate': answerSheetTemplate,
         'teacherAnswerKey': teacherAnswerKey,
+        'assessmentData': assessmentData,
       };
 
   factory Activity.fromMap(Map<String, dynamic> map) {
@@ -110,6 +114,7 @@ class Activity {
       attachmentName: map['attachmentName'],
       answerSheetTemplate: map['answerSheetTemplate'],
       teacherAnswerKey: map['teacherAnswerKey'],
+      assessmentData: map['assessmentData'],
     );
   }
 }

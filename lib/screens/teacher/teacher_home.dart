@@ -18,6 +18,7 @@ import 'announcements_screen.dart';
 import 'class_management_screen.dart';
 import 'gemini_assistant_screen.dart';
 import 'quick_activity_sheet.dart';
+import 'ai_assessment_hub_screen.dart';
 import '../common/community_standards_screen.dart';
 import '../common/privacy_policy_screen.dart';
 import '../onboarding/app_guide_onboarding_screen.dart';
@@ -616,6 +617,94 @@ class _TeacherActivitiesViewState extends State<_TeacherActivitiesView> {
                     ),
                   ),
                 const SizedBox(height: 18),
+
+                // AI Assessment Studio Hero Card
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AiAssessmentHubScreen(
+                          preselectedClass: selectedClass,
+                        ),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(22),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF5B2D8E), Color(0xFF7E3AF2), Color(0xFF0284C7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: AppTheme.heroShadow,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.psychology_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'AI Quiz & Assessment Maker',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  SizedBox(width: 6),
+                                  Icon(Icons.auto_awesome_rounded, color: AppTheme.accentAmber, size: 16),
+                                ],
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'Google Forms-style quiz creator • Real-time auto-checking & item analytics',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: AppTheme.primary,
+                            size: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
 
                 // In-Page Action Buttons Row (Quick Upload & New Activity)
                 Row(
