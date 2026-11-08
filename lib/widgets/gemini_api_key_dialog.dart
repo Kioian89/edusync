@@ -7,9 +7,8 @@ import '../providers/gemini_assistant_provider.dart';
 import '../theme/app_theme.dart';
 
 class GeminiApiKeyDialog {
-  /// Opens a step-by-step guided sheet for the teacher to configure the school's
-  /// Gemini API key. Once saved, all teachers and students in the school
-  /// automatically get AI access — no individual setup needed.
+  /// Opens a step-by-step guided sheet for the teacher to set their personal
+  /// Gemini API key. The key is stored only on this device.
   static Future<bool> show(BuildContext context) async {
     final gemini = context.read<GeminiAssistantProvider>();
     final keyCtrl = TextEditingController(text: gemini.apiKey ?? '');
@@ -336,7 +335,7 @@ class GeminiApiKeyDialog {
                       ),
                       const SizedBox(height: 12),
 
-                      // Universal School Key Info Banner
+                      // Personal Key Info Banner
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -347,12 +346,12 @@ class GeminiApiKeyDialog {
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.school_rounded,
+                            Icon(Icons.lock_person_rounded,
                                 size: 18, color: AppTheme.primary),
                             SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'This key is shared school-wide. Once saved, all teachers and students get AI access automatically — no individual setup needed.',
+                                'Your key is stored only on this device. Each teacher uses their own personal API key.',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -454,11 +453,9 @@ class GeminiApiKeyDialog {
                                           .timeout(
                                         const Duration(seconds: 7),
                                         onTimeout: () async {
-                                          // Safety fallback: if validation timed out, still save the key!
+                                          // Safety fallback: save locally if validation times out
                                           final prefs = await SharedPreferences.getInstance();
                                           await prefs.setString('teacher_gemini_api_key', entered);
-                                          gemini.setFirebaseCentralKey(entered)
-                                              .catchError((e) => debugPrint('Timeout Firebase sync: $e'));
                                           return true;
                                         },
                                       );
@@ -473,7 +470,7 @@ class GeminiApiKeyDialog {
                                                 Icon(Icons.check_circle_rounded,
                                                     color: Colors.white, size: 18),
                                                 SizedBox(width: 8),
-                                                Text('AI Key saved — all school users now have access!'),
+                                                Text('Gemini API Key saved and activated!'),
                                               ],
                                             ),
                                             backgroundColor: AppTheme.statusGraded,

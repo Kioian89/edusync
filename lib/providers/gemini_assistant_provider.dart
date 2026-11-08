@@ -97,14 +97,12 @@ class GeminiAssistantProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sets the teacher's Gemini API key — saves locally AND syncs to Firebase
-  /// so ALL users in the school (teachers + students) can use AI features
-  /// without entering a key themselves.
+  /// Sets the teacher's personal Gemini API key — stored only on this device.
+  /// Each teacher manages their own key independently.
   Future<bool> setApiKey(String key) async {
     final clean = key.trim();
     if (clean.isEmpty) {
       _personalApiKey = null;
-      _firebaseApiKey = null;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('teacher_gemini_api_key');
       notifyListeners();
@@ -119,19 +117,9 @@ class GeminiAssistantProvider extends ChangeNotifier {
     _isLoading = false;
 
     if (isValid) {
-      // Save locally for quick access
       _personalApiKey = clean;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('teacher_gemini_api_key', clean);
-
-      // Always sync to Firebase so all users school-wide get AI access
-      _firebaseApiKey = clean;
-      FirebaseAiService.setFirebaseGeminiConfig(
-        apiKey: clean,
-        model: _activeModel,
-        isEnabled: true,
-      ).catchError((e) => debugPrint('Firebase key sync note: $e'));
-
       notifyListeners();
       return true;
     } else {
@@ -141,7 +129,7 @@ class GeminiAssistantProvider extends ChangeNotifier {
     }
   }
 
-  /// Removes the teacher's key locally and disables it school-wide in Firebase.
+  /// Saves the Gemini API key centrally into Firebase (optional school-wide sharing).
   Future<void> setFirebaseCentralKey(String key, {String model = 'gemini-2.0-flash'}) async {
     final clean = key.trim();
     if (clean.isEmpty) return;
@@ -158,14 +146,8 @@ class GeminiAssistantProvider extends ChangeNotifier {
 
   Future<void> removeApiKey() async {
     _personalApiKey = null;
-    _firebaseApiKey = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('teacher_gemini_api_key');
-    // Disable school-wide key in Firebase
-    FirebaseAiService.setFirebaseGeminiConfig(
-      apiKey: '',
-      isEnabled: false,
-    ).catchError((e) => debugPrint('Firebase key remove note: $e'));
     notifyListeners();
   }
 
