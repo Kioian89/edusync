@@ -7,12 +7,13 @@ import '../providers/gemini_assistant_provider.dart';
 import '../theme/app_theme.dart';
 
 class GeminiApiKeyDialog {
-  /// Opens a comprehensive, step-by-step guided sheet to configure the Google Gemini API key.
+  /// Opens a step-by-step guided sheet for the teacher to configure the school's
+  /// Gemini API key. Once saved, all teachers and students in the school
+  /// automatically get AI access — no individual setup needed.
   static Future<bool> show(BuildContext context) async {
     final gemini = context.read<GeminiAssistantProvider>();
     final keyCtrl = TextEditingController(text: gemini.apiKey ?? '');
     bool isSubmitting = false;
-    bool syncToFirebase = true;
     bool obscureText = true;
     String? localError;
 
@@ -335,30 +336,33 @@ class GeminiApiKeyDialog {
                       ),
                       const SizedBox(height: 12),
 
-                      // Firebase School Sync Switch
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: syncToFirebase,
-                        activeColor: AppTheme.primary,
-                        title: const Text(
-                          'Share with Firebase (School AI)',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textMain,
-                          ),
+                      // Universal School Key Info Banner
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.07),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppTheme.primary.withValues(alpha: 0.2)),
                         ),
-                        subtitle: const Text(
-                          'Saves key to school database so all teachers in your school get AI access automatically without individual setup.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textSecondary,
-                            height: 1.3,
-                          ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.school_rounded,
+                                size: 18, color: AppTheme.primary),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'This key is shared school-wide. Once saved, all teachers and students get AI access automatically — no individual setup needed.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.primary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        onChanged: (val) {
-                          setModalState(() => syncToFirebase = val);
-                        },
                       ),
 
                       if (localError != null || gemini.errorMessage != null) ...[
@@ -450,20 +454,14 @@ class GeminiApiKeyDialog {
                                           .timeout(
                                         const Duration(seconds: 7),
                                         onTimeout: () async {
-                                          // Safety fallback: if validation timed out, still save the key locally!
+                                          // Safety fallback: if validation timed out, still save the key!
                                           final prefs = await SharedPreferences.getInstance();
                                           await prefs.setString('teacher_gemini_api_key', entered);
+                                          gemini.setFirebaseCentralKey(entered)
+                                              .catchError((e) => debugPrint('Timeout Firebase sync: $e'));
                                           return true;
                                         },
                                       );
-
-                                      if (success && syncToFirebase) {
-                                        gemini
-                                            .setFirebaseCentralKey(entered)
-                                            .catchError((e) {
-                                          debugPrint('Central key sync note: $e');
-                                        });
-                                      }
 
                                       setModalState(() => isSubmitting = false);
 
@@ -475,7 +473,7 @@ class GeminiApiKeyDialog {
                                                 Icon(Icons.check_circle_rounded,
                                                     color: Colors.white, size: 18),
                                                 SizedBox(width: 8),
-                                                Text('Gemini API Key saved and activated!'),
+                                                Text('AI Key saved — all school users now have access!'),
                                               ],
                                             ),
                                             backgroundColor: AppTheme.statusGraded,

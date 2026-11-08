@@ -7,11 +7,6 @@ import 'firebase_ai_service.dart';
 class GeminiService {
   static const String defaultModelName = 'gemini-2.0-flash';
 
-  /// Default API key loaded securely from compile-time dart-define
-  static String get defaultApiKey {
-    return const String.fromEnvironment('GEMINI_API_KEY');
-  }
-
   /// Sends a prompt with optional context and chat history to Google Gemini API
   /// Uses official google_generative_ai SDK with resilient HTTP fallback.
   static Future<String> sendMessage({
@@ -21,7 +16,7 @@ class GeminiService {
     String? systemInstruction,
     String modelName = defaultModelName,
   }) async {
-    final effectiveKey = apiKey.trim().isNotEmpty ? apiKey.trim() : defaultApiKey;
+    final effectiveKey = apiKey.trim();
 
     // 0. Primary: Try Firebase AI Logic SDK first if Firebase is available
     if (FirebaseAiService.isAvailable) {
