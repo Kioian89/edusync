@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
@@ -126,6 +128,11 @@ class AuthProvider extends ChangeNotifier {
     if (currentUserId != null) {
       try {
         _currentUser = _users.firstWhere((u) => u.id == currentUserId);
+        // Restore locally cached profile photo if the stored user has no photoUrl
+        final localPhoto = prefs.getString('photo_$currentUserId');
+        if (localPhoto != null && _currentUser!.photoUrl == null) {
+          _currentUser = _currentUser!.copyWith(photoUrl: localPhoto);
+        }
         startListeningToClasses();
       } catch (_) {}
     }
@@ -569,6 +576,53 @@ class AuthProvider extends ChangeNotifier {
       }
     }
     return 'Firebase Authentication is not available.';
+  }
+
+  /// Update the current user's profile photo.
+  /// Uploads to Firebase Storage when available; falls back to local base64 storage.
+  /// Returns null on success, or an error message string on failure.
+  Future<String?> updateProfilePhoto(XFile imageFile) async {
+    if (_currentUser == null) return 'Not logged in.';
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final prefs = await SharedPreferences.getInstance();
+
+      String photoUrl;
+
+      // Try Firebase Storage upload first
+      if (FirebaseAuthService.isFirebaseAvailable) {
+        try {
+          final ref = firebase_storage.FirebaseStorage.instance
+              .ref()
+              .child('profile_photos/${_currentUser!.id}.jpg');
+          final task = await ref.putData(
+            bytes,
+            firebase_storage.SettableMetadata(contentType: 'image/jpeg'),
+          );
+          photoUrl = await task.ref.getDownloadURL();
+        } catch (e) {
+          debugPrint('Firebase Storage upload failed, using local base64: $e');
+          photoUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        }
+      } else {
+        photoUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      }
+
+      // Always cache locally as base64 for offline access
+      final localBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      await prefs.setString('photo_${_currentUser!.id}', localBase64);
+
+      final updatedUser = _currentUser!.copyWith(photoUrl: photoUrl);
+      final idx = _users.indexWhere((u) => u.id == _currentUser!.id);
+      if (idx != -1) _users[idx] = updatedUser;
+      _currentUser = updatedUser;
+
+      await _saveData();
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return 'Failed to update photo: $e';
+    }
   }
 
   Future<void> logout() async {

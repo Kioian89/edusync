@@ -10,6 +10,7 @@ class User {
   final UserRole role;
   final String? classId; // primary or active class
   final List<String> enrolledClassIds; // all enrolled classes for universal student logic
+  final String? photoUrl; // profile photo URL (network URL or base64 data URI)
 
   User({
     required this.id,
@@ -19,6 +20,7 @@ class User {
     required this.role,
     this.classId,
     List<String>? enrolledClassIds,
+    this.photoUrl,
   }) : enrolledClassIds = enrolledClassIds ?? (classId != null ? [classId] : []);
 
   Map<String, dynamic> toMap() => {
@@ -29,6 +31,7 @@ class User {
         'role': role.name,
         'classId': classId,
         'enrolledClassIds': enrolledClassIds,
+        'photoUrl': photoUrl,
       };
 
   factory User.fromMap(Map<String, dynamic> map) {
@@ -49,6 +52,30 @@ class User {
       ),
       classId: primaryClassId,
       enrolledClassIds: enrolled,
+      photoUrl: map['photoUrl'] as String?,
+    );
+  }
+
+  /// Returns a copy of this [User] with the given fields replaced.
+  User copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? password,
+    UserRole? role,
+    String? classId,
+    List<String>? enrolledClassIds,
+    String? photoUrl,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      role: role ?? this.role,
+      classId: classId ?? this.classId,
+      enrolledClassIds: enrolledClassIds ?? List<String>.from(this.enrolledClassIds),
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 
@@ -57,4 +84,3 @@ class User {
   Color get roleColor =>
       role == UserRole.teacher ? Colors.indigo : Colors.teal;
 }
-

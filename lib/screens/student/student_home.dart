@@ -15,6 +15,7 @@ import 'submit_activity_screen.dart';
 import 'grades_screen.dart';
 import 'student_announcements_screen.dart';
 import 'join_class_qr_screen.dart';
+import '../../widgets/editable_avatar.dart';
 import '../common/community_standards_screen.dart';
 import '../common/privacy_policy_screen.dart';
 import '../onboarding/app_guide_onboarding_screen.dart';
@@ -795,24 +796,10 @@ class _StudentProfileView extends StatelessWidget {
             child: Column(
               children: [
                 Center(
-                  child: Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppTheme.primaryGradient,
-                      boxShadow: AppTheme.floatingShadow,
-                    ),
-                    child: Center(
-                      child: Text(
-                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'S',
-                        style: const TextStyle(
-                          fontSize: 38,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
+                  child: EditableAvatar(
+                    name: user.name,
+                    photoUrl: user.photoUrl,
+                    size: 90,
                   ),
                 ),
                 const SizedBox(height: 16),

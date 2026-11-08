@@ -2,7 +2,7 @@ name: edusync
 description: "EduSync - A Web-based Activity and Grade Management System for Teachers and Students."
 publish_to: 'none'
 
-version: 1.6.1+1
+version: 1.6.2+1
 
 environment:
   sdk: ^3.13.5
@@ -32,6 +32,7 @@ dependencies:
   shorebird_code_push: ^2.0.7
   google_generative_ai: ^0.4.7
   firebase_ai: ^5.1.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
