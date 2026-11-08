@@ -55,36 +55,47 @@ class _JoinClassQrScreenState extends State<JoinClassQrScreen> {
     final trimmed = raw.trim();
 
     // 1. JSON payload check
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    if (trimmed.contains('{') && trimmed.contains('}')) {
       try {
-        final decoded = jsonDecode(trimmed) as Map<String, dynamic>;
-        if (decoded.containsKey('classId')) {
-          return decoded['classId'].toString().trim();
-        }
-        if (decoded.containsKey('id')) {
-          return decoded['id'].toString().trim();
+        final start = trimmed.indexOf('{');
+        final end = trimmed.lastIndexOf('}');
+        final jsonStr = trimmed.substring(start, end + 1);
+        final decoded = jsonDecode(jsonStr);
+        if (decoded is Map) {
+          if (decoded['classId'] != null) {
+            return decoded['classId'].toString().trim();
+          }
+          if (decoded['id'] != null) {
+            return decoded['id'].toString().trim();
+          }
         }
       } catch (_) {}
     }
 
-    // 2. Regex fallback for JSON payloads
-    final jsonMatch = RegExp(r"""["'](?:classId|id)["']\s*:\s*["']([^"']+)["']""").firstMatch(trimmed);
-    if (jsonMatch != null && jsonMatch.group(1) != null) {
-      return jsonMatch.group(1)!.trim();
-    }
-
-    // 3. URI scheme check (e.g. edusync://class?id=...)
-    if (trimmed.startsWith('edusync://')) {
+    // 2. URI scheme or query check (e.g. edusync://class?id=...)
+    if (trimmed.startsWith('edusync://') || trimmed.contains('?')) {
       try {
         final uri = Uri.parse(trimmed);
         final id = uri.queryParameters['id'] ??
             uri.queryParameters['classId'] ??
             uri.pathSegments.lastOrNull;
-        if (id != null && id.isNotEmpty) return id;
+        if (id != null && id.isNotEmpty) return id.trim();
       } catch (_) {}
+    } else if (trimmed.contains('=')) {
+      final parts = trimmed.split('&');
+      for (final part in parts) {
+        final kv = part.split('=');
+        if (kv.length == 2) {
+          final k = kv[0].trim().toLowerCase();
+          final v = kv[1].trim();
+          if (k == 'classid' || k == 'id') {
+            return v;
+          }
+        }
+      }
     }
 
-    // 4. Plain ID fallback
+    // 3. Plain ID fallback
     return trimmed;
   }
 

@@ -57,25 +57,37 @@ class _ClassQrScannerScreenState extends State<ClassQrScannerScreen> {
     String? studentEmail;
 
     // Support JSON format payload if present
-    if (studentId.startsWith('{') && studentId.endsWith('}')) {
+    if (studentId.contains('{') && studentId.contains('}')) {
       try {
-        final decoded = jsonDecode(studentId) as Map<String, dynamic>;
-        if (decoded.containsKey('studentId')) {
-          studentId = decoded['studentId'].toString();
-        } else if (decoded.containsKey('id')) {
-          studentId = decoded['id'].toString();
-        }
-        if (decoded['name'] != null) {
-          studentName = decoded['name'].toString();
-        }
-        if (decoded['email'] != null) {
-          studentEmail = decoded['email'].toString();
+        final start = studentId.indexOf('{');
+        final end = studentId.lastIndexOf('}');
+        final jsonStr = studentId.substring(start, end + 1);
+        final decoded = jsonDecode(jsonStr);
+        if (decoded is Map) {
+          if (decoded['studentId'] != null) {
+            studentId = decoded['studentId'].toString().trim();
+          } else if (decoded['id'] != null) {
+            studentId = decoded['id'].toString().trim();
+          }
+          if (decoded['name'] != null) {
+            studentName = decoded['name'].toString().trim();
+          }
+          if (decoded['email'] != null) {
+            studentEmail = decoded['email'].toString().trim();
+          }
         }
       } catch (_) {}
-    } else {
-      final match = RegExp(r"""["']?(?:studentId|id)["']?\s*[:=]\s*["']?([^"',}\s]+)["']?""").firstMatch(studentId);
-      if (match != null) {
-        studentId = match.group(1)!;
+    } else if (studentId.contains('=')) {
+      final parts = studentId.split('&');
+      for (final part in parts) {
+        final kv = part.split('=');
+        if (kv.length == 2) {
+          final k = kv[0].trim().toLowerCase();
+          final v = kv[1].trim();
+          if (k == 'studentid' || k == 'id') {
+            studentId = v;
+          }
+        }
       }
     }
 

@@ -277,6 +277,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
+        titleSpacing: 0,
         title: Row(
           children: [
             Container(
@@ -294,27 +295,34 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Gemini Assistant',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.textMain,
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Gemini Assistant',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textMain,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  'AI Lesson & Activity Copilot',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
+                  Text(
+                    'AI Lesson & Activity Copilot',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -323,8 +331,8 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
           GestureDetector(
             onTap: () => _showApiKeyDialog(context, gemini),
             child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
                 color: gemini.hasKey
                     ? AppTheme.statusGraded.withValues(alpha: 0.12)
@@ -345,7 +353,7 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                         : gemini.hasKey
                             ? Icons.check_circle_rounded
                             : Icons.key_rounded,
-                    size: 14,
+                    size: 13,
                     color: gemini.hasKey
                         ? AppTheme.statusGraded
                         : AppTheme.statusPending,
@@ -353,12 +361,12 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                   const SizedBox(width: 4),
                   Text(
                     gemini.isFirebaseAiConnected && !gemini.hasPersonalKey
-                        ? 'Firebase AI'
+                        ? 'School AI'
                         : gemini.hasKey
                             ? 'Connected'
                             : 'Set API Key',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: gemini.hasKey
                           ? AppTheme.statusGraded
@@ -374,6 +382,8 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
               icon: const Icon(Icons.delete_sweep_rounded,
                   size: 20, color: AppTheme.textSecondary),
               tooltip: 'Clear Chat',
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              constraints: const BoxConstraints(),
               onPressed: () => gemini.clearChat(),
             ),
           const SizedBox(width: 8),
