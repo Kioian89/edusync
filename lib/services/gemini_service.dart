@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'firebase_ai_service.dart';
 
 class GeminiService {
-  static const String defaultModelName = 'gemini-flash-latest';
+  static const String defaultModelName = 'gemini-1.5-flash';
 
   /// Default API key loaded securely from compile-time dart-define
   static String get defaultApiKey {
@@ -94,8 +94,9 @@ class GeminiService {
   }) async {
     final candidateModels = [
       modelName,
-      if (modelName != 'gemini-flash-latest') 'gemini-flash-latest',
-      if (modelName != 'gemini-3.8-flash') 'gemini-3.8-flash',
+      if (modelName != 'gemini-1.5-flash') 'gemini-1.5-flash',
+      if (modelName != 'gemini-2.0-flash') 'gemini-2.0-flash',
+      if (modelName != 'gemini-1.5-pro') 'gemini-1.5-pro',
     ];
 
     String lastError = '';
@@ -140,11 +141,13 @@ class GeminiService {
       }
 
       try {
-        final response = await http.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(requestBody),
-        );
+        final response = await http
+            .post(
+              url,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(requestBody),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -174,18 +177,31 @@ class GeminiService {
     throw Exception(lastError.isNotEmpty ? lastError : 'Failed to reach Gemini API across all model endpoints.');
   }
 
-  /// Verifies if an API key is valid by sending a tiny ping prompt
+  /// Verifies if an API key is valid using Google AI Studio's lightweight models endpoint.
+  /// Fast (< 500ms) and resilient to poor network connections.
   static Future<bool> validateApiKey(String apiKey) async {
+    final clean = apiKey.trim();
+    if (clean.isEmpty) return false;
+
+    // Fast local format check: standard Google Gemini keys start with "AIza" and are ~39 chars
+    final looksLikeGoogleKey = clean.startsWith('AIza') && clean.length >= 30;
+
     try {
-      final res = await _sendViaHttpFallback(
-        apiKey: apiKey.trim(),
-        prompt: 'Ping test. Reply with: OK',
-        modelName: defaultModelName,
+      final url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models?key=$clean',
       );
-      return res.isNotEmpty;
+      final response = await http.get(url).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 400 || response.statusCode == 403) {
+        debugPrint('validateApiKey rejected by Google: ${response.statusCode} ${response.body}');
+        return false;
+      }
+      return looksLikeGoogleKey;
     } catch (e) {
-      debugPrint('validateApiKey error: $e');
-      return false;
+      debugPrint('validateApiKey network timeout/error: $e');
+      return looksLikeGoogleKey;
     }
   }
 

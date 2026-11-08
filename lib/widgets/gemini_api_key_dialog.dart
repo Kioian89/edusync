@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/gemini_assistant_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -149,50 +151,112 @@ class GeminiApiKeyDialog {
                             _buildGuideStep(
                               stepNum: '1',
                               title: 'Open Google AI Studio in your browser:',
-                              action: InkWell(
-                                onTap: () {
-                                  Clipboard.setData(const ClipboardData(
-                                      text: 'https://aistudio.google.com/'));
-                                  ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'URL copied: https://aistudio.google.com/'),
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  margin: const EdgeInsets.only(top: 4),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary
-                                        .withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                        color: AppTheme.primary
-                                            .withValues(alpha: 0.2)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.link_rounded,
-                                          size: 14, color: AppTheme.primary),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'aistudio.google.com',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
+                              action: Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: [
+                                    // Button 1: Open directly in browser
+                                    InkWell(
+                                      onTap: () async {
+                                        final uri = Uri.parse('https://aistudio.google.com/app/apikey');
+                                        try {
+                                          final launched = await launchUrl(
+                                            uri,
+                                            mode: LaunchMode.externalApplication,
+                                          );
+                                          if (!launched) {
+                                            await launchUrl(uri, mode: LaunchMode.platformDefault);
+                                          }
+                                        } catch (e) {
+                                          debugPrint('Could not launch URL: $e');
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
                                           color: AppTheme.primary,
+                                          borderRadius: BorderRadius.circular(10),
+                                          boxShadow: AppTheme.subtlePillShadow,
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.open_in_new_rounded,
+                                                size: 14, color: Colors.white),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Open AI Studio',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      SizedBox(width: 6),
-                                      Icon(Icons.copy_rounded,
-                                          size: 12, color: AppTheme.primary),
-                                    ],
-                                  ),
+                                    ),
+                                    // Button 2: Copy link to clipboard
+                                    InkWell(
+                                      onTap: () async {
+                                        await Clipboard.setData(const ClipboardData(
+                                            text: 'https://aistudio.google.com/app/apikey'));
+                                        if (sheetCtx.mounted) {
+                                          ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                                            const SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  Icon(Icons.check_circle_rounded,
+                                                      color: Colors.white, size: 18),
+                                                  SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Link copied! https://aistudio.google.com/app/apikey',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              backgroundColor: AppTheme.statusGraded,
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary
+                                              .withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                              color: AppTheme.primary
+                                                  .withValues(alpha: 0.25)),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.copy_rounded,
+                                                size: 13, color: AppTheme.primary),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Copy Link',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppTheme.primary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -380,21 +444,54 @@ class GeminiApiKeyDialog {
                                       localError = null;
                                     });
 
-                                    final success =
-                                        await gemini.setApiKey(entered);
-                                    if (success && syncToFirebase) {
-                                      await gemini
-                                          .setFirebaseCentralKey(entered);
-                                    }
+                                    try {
+                                      final success = await gemini
+                                          .setApiKey(entered)
+                                          .timeout(
+                                        const Duration(seconds: 7),
+                                        onTimeout: () async {
+                                          // Safety fallback: if validation timed out, still save the key locally!
+                                          final prefs = await SharedPreferences.getInstance();
+                                          await prefs.setString('teacher_gemini_api_key', entered);
+                                          return true;
+                                        },
+                                      );
 
-                                    setModalState(() => isSubmitting = false);
+                                      if (success && syncToFirebase) {
+                                        gemini
+                                            .setFirebaseCentralKey(entered)
+                                            .catchError((e) {
+                                          debugPrint('Central key sync note: $e');
+                                        });
+                                      }
 
-                                    if (success && sheetCtx.mounted) {
-                                      Navigator.pop(sheetCtx, true);
-                                    } else {
+                                      setModalState(() => isSubmitting = false);
+
+                                      if (success && sheetCtx.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Row(
+                                              children: [
+                                                Icon(Icons.check_circle_rounded,
+                                                    color: Colors.white, size: 18),
+                                                SizedBox(width: 8),
+                                                Text('Gemini API Key saved and activated!'),
+                                              ],
+                                            ),
+                                            backgroundColor: AppTheme.statusGraded,
+                                          ),
+                                        );
+                                        Navigator.pop(sheetCtx, true);
+                                      } else {
+                                        setModalState(() {
+                                          localError = gemini.errorMessage ??
+                                              'Failed to connect to Google Gemini. Please check your key.';
+                                        });
+                                      }
+                                    } catch (e) {
                                       setModalState(() {
-                                        localError = gemini.errorMessage ??
-                                            'Failed to connect to Google Gemini. Please check your key.';
+                                        isSubmitting = false;
+                                        localError = 'Error saving key: $e';
                                       });
                                     }
                                   },

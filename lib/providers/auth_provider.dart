@@ -28,11 +28,68 @@ class AuthProvider extends ChangeNotifier {
       .where((c) => c.teacherId == _currentUser?.id)
       .toList();
 
+  final Set<String> _pendingStudentFetches = {};
+
   List<User> studentsInClass(String classId) {
     final cls = _classes.firstWhere((c) => c.id == classId,
         orElse: () => ClassGroup(
             id: '', name: '', subject: '', section: '', teacherId: '', studentIds: []));
-    return _users.where((u) => cls.studentIds.contains(u.id)).toList();
+
+    // Proactively fetch student details from Firestore if missing locally
+    _fetchMissingStudentProfiles(cls.studentIds);
+
+    return cls.studentIds.map((sid) {
+      final match = _users.where((u) => u.id == sid).firstOrNull;
+      if (match != null) return match;
+      return User(
+        id: sid,
+        name: 'Student (${sid.length > 6 ? sid.substring(sid.length - 4) : sid})',
+        email: '',
+        role: UserRole.student,
+        classId: classId,
+      );
+    }).toList();
+  }
+
+  void _fetchMissingStudentProfiles(List<String> studentIds) {
+    if (!FirebaseAuthService.isFirebaseAvailable) return;
+    final missing = studentIds.where((id) =>
+        !_users.any((u) => u.id == id) && !_pendingStudentFetches.contains(id)).toList();
+    if (missing.isEmpty) return;
+
+    _pendingStudentFetches.addAll(missing);
+    Future.microtask(() async {
+      bool changed = false;
+      for (final id in missing) {
+        try {
+          final profile = await FirebaseAuthService.getUserProfile(id);
+          if (profile != null) {
+            final u = User(
+              id: id,
+              name: profile['name'] ?? 'Student (${id.length > 4 ? id.substring(id.length - 4) : id})',
+              email: profile['email'] ?? '',
+              role: UserRole.student,
+              classId: profile['classId'],
+              enrolledClassIds: List<String>.from(profile['enrolledClassIds'] ?? []),
+              photoUrl: profile['photoUrl'],
+            );
+            final idx = _users.indexWhere((existing) => existing.id == id);
+            if (idx != -1) {
+              _users[idx] = u;
+            } else {
+              _users.add(u);
+            }
+            changed = true;
+          }
+        } catch (e) {
+          debugPrint('Error fetching student profile $id: $e');
+        }
+      }
+      if (changed) {
+        _saveData();
+        notifyListeners();
+      }
+    });
   }
 
   List<ClassGroup> get studentClasses {
@@ -447,7 +504,15 @@ class AuthProvider extends ChangeNotifier {
     }
 
     if (student == null) {
-      return 'Student account not found.';
+      student = User(
+        id: studentId,
+        name: 'Student (${studentId.length > 4 ? studentId.substring(studentId.length - 4) : studentId})',
+        email: '$studentId@edusync.internal',
+        role: UserRole.student,
+        classId: classId,
+      );
+      _users.add(student);
+      studentIdx = _users.length - 1;
     }
 
     if (student.role != UserRole.student) {
@@ -508,7 +573,16 @@ class AuthProvider extends ChangeNotifier {
   void registerLocalClass(ClassGroup cls) {
     final idx = _classes.indexWhere((c) => c.id == cls.id);
     if (idx != -1) {
-      _classes[idx] = cls;
+      final existing = _classes[idx];
+      final mergedStudentIds = {...existing.studentIds, ...cls.studentIds}.toList();
+      _classes[idx] = ClassGroup(
+        id: cls.id,
+        name: cls.name.isNotEmpty ? cls.name : existing.name,
+        subject: cls.subject.isNotEmpty ? cls.subject : existing.subject,
+        section: cls.section.isNotEmpty ? cls.section : existing.section,
+        teacherId: cls.teacherId.isNotEmpty ? cls.teacherId : existing.teacherId,
+        studentIds: mergedStudentIds,
+      );
     } else {
       _classes.add(cls);
     }
@@ -540,7 +614,9 @@ class AuthProvider extends ChangeNotifier {
     _classesSubscription = stream.listen((remoteClasses) {
       if (remoteClasses.isNotEmpty) {
         bool changed = false;
+        final List<String> allRemoteStudentIds = [];
         for (final remote in remoteClasses) {
+          allRemoteStudentIds.addAll(remote.studentIds);
           final idx = _classes.indexWhere((c) => c.id == remote.id);
           if (idx != -1) {
             _classes[idx] = remote;
@@ -549,6 +625,9 @@ class AuthProvider extends ChangeNotifier {
             _classes.add(remote);
             changed = true;
           }
+        }
+        if (allRemoteStudentIds.isNotEmpty) {
+          _fetchMissingStudentProfiles(allRemoteStudentIds);
         }
         if (changed) {
           _saveData();

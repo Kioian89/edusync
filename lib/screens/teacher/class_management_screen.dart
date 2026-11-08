@@ -323,7 +323,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                               border: Border.all(color: AppTheme.borderLight),
                             ),
                             child: Text(
-                              '${students.length} Students',
+                              '${cls.studentIds.length} Students',
                               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.primary),
                             ),
                           ),

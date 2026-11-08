@@ -217,7 +217,11 @@ class _ClassQrScannerScreenState extends State<ClassQrScannerScreen> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, idx) {
                     final s = students[idx];
-                    final isEnrolled = widget.classGroup.studentIds.contains(s.id);
+                    final currentClass = auth.classes.firstWhere(
+                      (c) => c.id == widget.classGroup.id,
+                      orElse: () => widget.classGroup,
+                    );
+                    final isEnrolled = currentClass.studentIds.contains(s.id);
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Container(
