@@ -81,14 +81,19 @@ jobs:
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
         run: |
-          set -o pipefail
           DART_DEFINES=""
           if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
             DART_DEFINES="--dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"
           fi
           if [ -n "$SHOREBIRD_TOKEN" ]; then
-            echo "Building Shorebird base release APK..."
-            shorebird release android --artifact=apk $DART_DEFINES --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+            echo "Attempting Shorebird base release APK..."
+            shorebird release android --artifact=apk $DART_DEFINES --split-debug-info=symbols/ 2>&1 | tee build_log.txt \
+              && echo "SHOREBIRD_SUCCESS=true" >> $GITHUB_ENV \
+              || {
+                EXIT_CODE=$?
+                echo "⚠️  Shorebird failed (exit $EXIT_CODE) — falling back to Flutter release build..."
+                flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+              }
           else
             echo "SHOREBIRD_TOKEN not set, building standard Flutter release APK..."
             flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
