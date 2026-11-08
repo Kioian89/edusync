@@ -27,6 +27,19 @@ jobs:
       contents: write
 
     steps:
+      - name: Free Disk Space
+        run: |
+          echo "Disk before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android/sdk/ndk
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo apt-get clean -y
+          echo "Disk after cleanup:"
+          df -h
+
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
