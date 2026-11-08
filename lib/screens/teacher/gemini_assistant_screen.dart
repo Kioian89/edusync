@@ -54,7 +54,6 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
   void _showApiKeyDialog(BuildContext context, GeminiAssistantProvider gemini) {
     final keyCtrl = TextEditingController(text: gemini.apiKey ?? '');
     bool isSubmitting = false;
-    bool syncToFirebase = true;
 
     showModalBottomSheet(
       context: context,
@@ -150,28 +149,33 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: syncToFirebase,
-                      activeColor: AppTheme.primary,
-                      title: const Text(
-                        'Share with Firebase (School AI)',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textMain,
-                        ),
+                    // Personal key info — not shared with other users
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppTheme.primary.withValues(alpha: 0.2)),
                       ),
-                      subtitle: const Text(
-                        'Syncs key to Firebase Firestore so all teachers in the school get Gemini AI out-of-the-box.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textSecondary,
-                        ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.lock_person_rounded,
+                              size: 16, color: AppTheme.primary),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Your key is private — stored only on your device and not shared with other users.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      onChanged: (val) {
-                        setModalState(() => syncToFirebase = val);
-                      },
                     ),
                     const SizedBox(height: 10),
                     if (gemini.errorMessage != null)
@@ -220,9 +224,6 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
                                   setModalState(() => isSubmitting = true);
                                   final entered = keyCtrl.text.trim();
                                   final success = await gemini.setApiKey(entered);
-                                  if (success && syncToFirebase && entered.isNotEmpty) {
-                                    await gemini.setFirebaseCentralKey(entered);
-                                  }
                                   setModalState(() => isSubmitting = false);
                                   if (success && sheetCtx.mounted) {
                                     Navigator.pop(sheetCtx);
