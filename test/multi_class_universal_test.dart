@@ -38,6 +38,7 @@ void main() {
     test('Student can enroll in multiple classes and query activities across classes', () async {
       final auth = AuthProvider();
       await auth.init();
+      auth.seedDemoAccountsForTesting();
 
       // Sign in as teacher to create two distinct subjects
       await auth.login('teacher@edusync.com', 'teacher123');

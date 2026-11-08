@@ -46,16 +46,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     final activity = context.read<ActivityProvider>();
-    if (auth.classes.isNotEmpty) {
-      final cls = auth.classes.first;
-      final students = auth.studentsInClass(cls.id);
-      await activity.seedDemoActivities(
-        classId: cls.id,
-        teacherId: cls.teacherId,
-        studentIds: students.map((s) => s.id).toList(),
-        studentNames: students.map((s) => s.name).toList(),
-      );
-    }
 
     // Start Firestore real-time sync after successful login
     if (auth.currentUser != null) {
@@ -81,13 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => screen),
     );
-  }
-
-  void _fillDemo(String email, String pass) {
-    setState(() {
-      _emailCtrl.text = email;
-      _passwordCtrl.text = pass;
-    });
   }
 
   void _showForgotPasswordDialog() {
@@ -219,105 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Demo Switcher Pills
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: AppTheme.cardShadow,
-                  border: Border.all(color: AppTheme.borderLight),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.flash_on_rounded, size: 16, color: AppTheme.primary),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Quick Demo Login',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textMain,
-                          ),
-                        ),
-                        const Spacer(),
-                        const Text(
-                          'Tap to fill',
-                          style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => _fillDemo('teacher@edusync.com', 'teacher123'),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceSoft,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: AppTheme.borderLight),
-                              ),
-                              child: const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '👩‍🏫 Teacher',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textMain),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text('teacher@edusync.com', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => _fillDemo('juan@edusync.com', 'student123'),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceSoft,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: AppTheme.borderLight),
-                              ),
-                              child: const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '🎓 Student',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textMain),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text('juan@edusync.com', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 28),
+              const SizedBox(height: 12),
               Form(
                 key: _formKey,
                 child: Column(

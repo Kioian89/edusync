@@ -14,6 +14,7 @@ void main() {
     test('Teacher can create new class/section and student can join', () async {
       final auth = AuthProvider();
       await auth.init();
+      auth.seedDemoAccountsForTesting();
 
       // Sign in as teacher
       await auth.login('teacher@edusync.com', 'teacher123');

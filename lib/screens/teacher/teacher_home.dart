@@ -19,6 +19,8 @@ import 'class_management_screen.dart';
 import 'gemini_assistant_screen.dart';
 import 'quick_activity_sheet.dart';
 import '../common/community_standards_screen.dart';
+import '../common/privacy_policy_screen.dart';
+import '../onboarding/app_guide_onboarding_screen.dart';
 
 class TeacherHome extends StatefulWidget {
   const TeacherHome({super.key});
@@ -1248,6 +1250,112 @@ class _TeacherProfileView extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 24),
+
+                // App Guide & Walkthrough Card
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AppGuideOnboardingScreen(isFirstLaunch: false),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: AppTheme.cardShadow,
+                      border: Border.all(color: AppTheme.borderLight),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.auto_stories_rounded, color: AppTheme.primary, size: 20),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'How to Use EduSync (App Guide)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textMain,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Step-by-step feature steps, QR scanning & grading',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Privacy Policy & Terms Link Card
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PrivacyPolicyScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: AppTheme.cardShadow,
+                      border: Border.all(color: AppTheme.borderLight),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.security_rounded, color: AppTheme.primary, size: 20),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Privacy Policy & Terms of Service',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textMain,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Data protection, camera permissions & disclosures',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
 
                 // Community Standards Link Card
                 InkWell(

@@ -58,13 +58,10 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> init() async {
     await _loadData();
-    if (_users.isEmpty) {
-      _seedDemoData();
-      await _saveData();
-    }
   }
 
-  void _seedDemoData() {
+  /// Exposed strictly for automated test suites
+  void seedDemoAccountsForTesting() {
     final teacherId = _uuid.v4();
     final studentId1 = _uuid.v4();
     final studentId2 = _uuid.v4();

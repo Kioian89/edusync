@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../providers/activity_provider.dart';
 import 'auth/landing_screen.dart';
+import 'onboarding/app_guide_onboarding_screen.dart';
 import 'teacher/teacher_home.dart';
 import 'student/student_home.dart';
 import '../models/user.dart';
@@ -44,18 +46,6 @@ class _SplashScreenState extends State<SplashScreen>
     await auth.init();
     await activity.init();
 
-    // Seed demo activities if teacher is logged in or if there are classes
-    if (auth.classes.isNotEmpty) {
-      final cls = auth.classes.first;
-      final students = auth.studentsInClass(cls.id);
-      await activity.seedDemoActivities(
-        classId: cls.id,
-        teacherId: cls.teacherId,
-        studentIds: students.map((s) => s.id).toList(),
-        studentNames: students.map((s) => s.name).toList(),
-      );
-    }
-
     // Start Firestore real-time sync if already logged in from a previous session
     if (auth.isLoggedIn && auth.currentUser != null) {
       auth.startListeningToClasses();
@@ -69,9 +59,22 @@ class _SplashScreenState extends State<SplashScreen>
       }
     }
 
+    final prefs = await SharedPreferences.getInstance();
+    final hasAcceptedTerms = prefs.getBool('has_accepted_terms') ?? false;
+
     await Future.delayed(const Duration(milliseconds: 800));
 
     if (!mounted) return;
+
+    if (!hasAcceptedTerms) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const AppGuideOnboardingScreen(isFirstLaunch: true),
+        ),
+      );
+      return;
+    }
+
     if (auth.isLoggedIn) {
       _navigateByRole(auth.currentUser!);
     } else {
