@@ -105,13 +105,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Rename APK to edusync.apk
+        if: "${{ github.event.inputs.build_type != 'patch' }}"
+        run: |
+          APK_DIR="build/app/outputs/flutter-apk"
+          if [ -f "$APK_DIR/app-release.apk" ]; then
+            mv "$APK_DIR/app-release.apk" "$APK_DIR/edusync.apk"
+            echo "Renamed app-release.apk → edusync.apk"
+          elif [ -f "$APK_DIR/edusync.apk" ]; then
+            echo "edusync.apk already exists (renamed by Gradle)"
+          else
+            echo "No APK found in $APK_DIR" && ls "$APK_DIR" && exit 1
+          fi
+
       - name: Publish GitHub Release
         if: "${{ github.event.inputs.build_type != 'patch' }}"
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
           name: Release ${{ github.event.inputs.version_tag || github.ref_name }}
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: build/app/outputs/flutter-apk/edusync.apk
           generate_release_notes: true
           draft: false
           prerelease: false
