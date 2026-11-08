@@ -278,115 +278,102 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         titleSpacing: 0,
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.auto_awesome_rounded,
-                  color: Colors.white,
-                  size: 18,
+        title: InkWell(
+          onTap: () => _showApiKeyDialog(context, gemini),
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Gemini Assistant',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.textMain,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Gemini Assistant',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.textMain,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: gemini.hasKey
+                                  ? AppTheme.statusGraded
+                                  : AppTheme.statusPending,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              gemini.isFirebaseAiConnected && !gemini.hasPersonalKey
+                                  ? 'School AI Active'
+                                  : gemini.hasKey
+                                      ? 'Connected • AI Copilot'
+                                      : 'Tap to configure API Key',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: gemini.hasKey
+                                    ? AppTheme.statusGraded
+                                    : AppTheme.statusPending,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  Text(
-                    'AI Lesson & Activity Copilot',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
         actions: [
-          // Connection status badge / API Key button
-          GestureDetector(
-            onTap: () => _showApiKeyDialog(context, gemini),
-            child: Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: gemini.hasKey
-                    ? AppTheme.statusGraded.withValues(alpha: 0.12)
-                    : AppTheme.statusPending.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: gemini.hasKey
-                      ? AppTheme.statusGraded.withValues(alpha: 0.4)
-                      : AppTheme.statusPending.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    gemini.isFirebaseAiConnected
-                        ? Icons.cloud_done_rounded
-                        : gemini.hasKey
-                            ? Icons.check_circle_rounded
-                            : Icons.key_rounded,
-                    size: 13,
-                    color: gemini.hasKey
-                        ? AppTheme.statusGraded
-                        : AppTheme.statusPending,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    gemini.isFirebaseAiConnected && !gemini.hasPersonalKey
-                        ? 'School AI'
-                        : gemini.hasKey
-                            ? 'Connected'
-                            : 'Set API Key',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: gemini.hasKey
-                          ? AppTheme.statusGraded
-                          : AppTheme.statusPending,
-                    ),
-                  ),
-                ],
-              ),
+          IconButton(
+            icon: Icon(
+              gemini.hasKey ? Icons.tune_rounded : Icons.key_rounded,
+              size: 20,
+              color: gemini.hasKey ? AppTheme.primary : AppTheme.statusPending,
             ),
+            tooltip: gemini.hasKey ? 'Gemini AI Settings' : 'Configure API Key',
+            onPressed: () => _showApiKeyDialog(context, gemini),
           ),
           if (gemini.messages.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_rounded,
                   size: 20, color: AppTheme.textSecondary),
               tooltip: 'Clear Chat',
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              constraints: const BoxConstraints(),
               onPressed: () => gemini.clearChat(),
             ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: Column(
