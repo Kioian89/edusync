@@ -24,6 +24,6 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Environment (please complete the following information):**
- - Device: [e.g. Pixel 7, iPhone 14, Emulator]
- - OS: [e.g. Android 14, iOS 17]
- - EduSync Version: [e.g. 1.4.2]
+ - Device: [e.g. Pixel 7, Samsung Galaxy A14, Emulator]
+ - OS: [e.g. Android 14, Android 13, Android 12]
+ - EduSync Version: [e.g. 1.6.9]

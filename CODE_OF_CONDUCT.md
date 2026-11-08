@@ -17,7 +17,7 @@ Examples of behavior that contributes to a positive environment for our communit
 * Giving and gracefully accepting constructive feedback
 * Accepting responsibility and apologizing to those affected by our mistakes, and learning from the experience
 * Focusing on what is best not just for us as individuals, but for the overall educational community
-* Fostering academic honesty, original student work, and ethical usage of AI educational tools (Google Gemini AI)
+* Fostering academic honesty, original student work, and ethical usage of AI educational tools (Lodix Universal AI Engine)
 
 Examples of unacceptable behavior include:
 

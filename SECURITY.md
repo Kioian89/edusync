@@ -6,9 +6,9 @@ The following table lists which versions of EduSync currently receive security u
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.4.x   | :white_check_mark: |
-| 1.3.x   | :white_check_mark: |
-| < 1.3.0 | :x:                |
+| 1.6.x   | :white_check_mark: |
+| 1.5.x   | :white_check_mark: |
+| < 1.5.0 | :x:                |
 
 ---
 

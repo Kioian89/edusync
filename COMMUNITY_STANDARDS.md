@@ -1,76 +1,100 @@
-# EduSync Community Standards
+# 🏫 EduSync Community Standards & Guidelines
 
-Welcome to the EduSync community! This document outlines the expectations and guidelines for everyone participating in this project — contributors, users, and maintainers.
+Welcome to the **EduSync** community! EduSync is an open-source Android mobile classroom management platform designed for teachers and students in Philippine schools.
 
----
-
-## 🤝 Our Pledge
-
-We are committed to making participation in EduSync a respectful, inclusive, and harassment-free experience for everyone, regardless of age, background, experience level, gender, nationality, or religion.
+These standards define our community values, educational ethics, data privacy commitments, and contribution expectations.
 
 ---
 
-## 📋 Community Guidelines
+## 🎯 1. Community Purpose & Core Values
 
-### ✅ Expected Behavior
-- Be respectful and constructive in all interactions
-- Provide helpful, specific feedback in issues and pull requests
-- Give credit where it's due
-- Focus on what's best for teachers and students using the app
-- Help newcomers get started
-
-### ❌ Unacceptable Behavior
-- Harassment, insults, or personal attacks
-- Publishing others' private information (doxxing)
-- Spam, self-promotion, or off-topic content
-- Disruptive or bad-faith contributions
+* **Educator Empowerment:** Reduce teacher paperwork and grading time through automated workflows, QR enrollment, and AI-assisted lesson prep.
+* **Student Equity:** Ensure lightweight, offline-capable mobile performance that runs smoothly even on budget Android devices and limited internet connections.
+* **Integrity & Respect:** Maintain a supportive, collaborative, and harassment-free environment for all teachers, learners, and open-source contributors.
 
 ---
 
-## 🐛 Reporting Issues
+## 🤝 2. Code of Conduct Summary
 
-Before opening an issue:
-1. **Search** existing issues to avoid duplicates
-2. Use the appropriate template:
-   - [🐛 Bug Report](https://github.com/Kioian89/edusync/issues/new?template=bug_report.md)
-   - [💡 Feature Request](https://github.com/Kioian89/edusync/issues/new?template=feature_request.md)
-3. Include as much detail as possible (device, Android version, steps to reproduce)
+Everyone participating in EduSync spaces (GitHub issues, pull requests, discussions, code reviews) must abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+### Expected Standards
+- Demonstrate kindness, empathy, and constructive communication.
+- Gracefully accept and offer actionable feedback.
+- Respect diverse backgrounds, technical skill levels, and classroom environments.
+- Protect the privacy of students and educators at all times.
+
+### Zero Tolerance
+- Harassment, discrimination, or abusive language.
+- Sharing private student grades, personal identifiable information (PII), or unauthorized classroom invite codes.
+- Committing unauthorized credentials, security backdoors, or malicious code.
 
 ---
 
-## 🔧 Contributing Code
+## 🤖 3. Ethical AI Standards (Lodix AI Engine)
 
-1. **Fork** the repository
-2. **Create a branch**: `git checkout -b feat/your-feature`
-3. **Write tests** for new features
-4. **Run checks** before submitting:
+EduSync features **Lodix AI**, a universal AI assistant supporting Google Gemini, Groq, OpenAI, Anthropic Claude, and OpenRouter. When developing or using AI features:
+
+1. **Teacher in the Loop:** AI suggestions (such as quiz questions, rubrics, and lesson summaries) are aids for educators. Teachers maintain final authority and must review all generated materials before distribution.
+2. **Student Privacy Protection:** Student personal data, names, and individual assessment responses must **never** be sent to third-party AI APIs without explicit user consent.
+3. **Private Key Isolation:** API keys remain strictly on the teacher's physical device (`SharedPreferences`). Keys are never logged, uploaded to shared databases, or broadcast to other users or students.
+4. **Academic Honesty:** AI tools are built to facilitate learning, scaffolding, and pedagogical efficiency—not academic shortcutting or plagiarism.
+
+---
+
+## 🛡️ 4. Data Privacy & Child Safety (RA 10173 Compliance)
+
+In accordance with the **Philippine Data Privacy Act of 2012 (RA 10173)** and international child data protection practices:
+
+* **Authentication Required:** All Firestore reads and writes are strictly restricted behind Firebase Authentication (`isAuthenticated()`).
+* **Profile Ownership:** Profile photos, names, and settings are editable exclusively by the authenticated account owner (`isOwner(userId)`).
+* **No Telemetry Tracking:** Student behavior is not tracked or sold to advertising networks.
+* **Cloud Storage Integrity:** Uploaded activity attachments and avatar photos are managed securely via Firebase Storage with access control rules.
+
+---
+
+## 💻 5. Contribution & Quality Gateway
+
+All contributions to EduSync must pass automated quality gates before being merged:
+
+1. **Zero Analysis Warnings:**
    ```bash
-   flutter analyze   # Must show 0 issues
-   flutter test      # All tests must pass
+   flutter analyze
    ```
-5. **Commit** using conventional format: `feat(scope): description`
-6. **Open a Pull Request** with a clear description of changes
+   *Must return `No issues found!`*
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+2. **Full Automated Test Coverage:**
+   ```bash
+   flutter test
+   ```
+   *All unit, widget, and multi-class logic tests must pass (12+ tests).*
 
----
+3. **Android-First Compatibility:**
+   * Test changes on Android devices or emulators running API 23 (Android 6.0) through API 35 (Android 15).
+   * Ensure offline caching functions gracefully when internet connectivity drops.
 
-## 🔒 Security
-
-Do **not** open public issues for security vulnerabilities. Please follow the process in [SECURITY.md](./SECURITY.md).
-
----
-
-## 📄 License
-
-By contributing, you agree that your contributions will be licensed under the [MIT License](./LICENSE).
+4. **Conventional Commits:**
+   * Format: `feat(scope): description vX.Y.Z` or `fix(scope): description vX.Y.Z`
 
 ---
 
-## 📬 Contact
+## 🐛 6. Reporting Issues & Vulnerabilities
 
-For questions not covered here, open a [GitHub Discussion](https://github.com/Kioian89/edusync/discussions) or file an issue.
+* **Bugs:** Open a ticket using the [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.md).
+* **Feature Ideas:** Submit suggestions via the [Feature Request Template](.github/ISSUE_TEMPLATE/feature_request.md).
+* **Security Advisories:** **Do NOT** open a public issue for security bugs. Please follow our [Security Policy](SECURITY.md) to report responsibly via private GitHub advisories.
 
 ---
 
-*Thank you for helping make EduSync better for Filipino classrooms!* 🇵🇭
+## 📄 7. Open Source License
+
+EduSync is distributed under the [MIT License](LICENSE). Contributions submitted to this repository become part of the open-source codebase under the same license terms.
+
+---
+
+<div align="center">
+
+*Mabuhay ang mga Gurong Pilipino!* 🇵🇭  
+Thank you for helping build accessible, powerful educational technology for all.
+
+</div>
