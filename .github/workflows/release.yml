@@ -126,14 +126,16 @@ jobs:
       - name: Rename APK to edusync.apk
         if: "${{ github.event.inputs.build_type != 'patch' }}"
         run: |
-          APK_DIR="build/app/outputs/flutter-apk"
-          if [ -f "$APK_DIR/app-release.apk" ]; then
-            mv "$APK_DIR/app-release.apk" "$APK_DIR/edusync.apk"
-            echo "Renamed app-release.apk → edusync.apk"
-          elif [ -f "$APK_DIR/edusync.apk" ]; then
-            echo "edusync.apk already exists (renamed by Gradle)"
+          mkdir -p build/app/outputs/flutter-apk
+          FOUND_APK=$(find build -name "*.apk" -not -name "*unaligned*" | head -n 1)
+          if [ -n "$FOUND_APK" ]; then
+            echo "Found APK at: $FOUND_APK"
+            cp "$FOUND_APK" build/app/outputs/flutter-apk/edusync.apk
+            echo "Successfully staged APK at build/app/outputs/flutter-apk/edusync.apk"
           else
-            echo "No APK found in $APK_DIR" && ls "$APK_DIR" && exit 1
+            echo "No APK found in build directory!"
+            find build -maxdepth 4 || true
+            exit 1
           fi
 
       - name: Publish GitHub Release
