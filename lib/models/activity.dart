@@ -13,9 +13,10 @@ class Activity {
   final double totalPoints;
   final DateTime createdAt;
   final List<String> attachments;
+  final List<String?> attachmentUrls;
   final String? answerSheetTemplate; // In-app answer sheet format/template
-  final String? teacherAnswerKey;    // Teacher's answer key for grading
-  final String? assessmentData;      // AI Assessment JSON configuration
+  final String? teacherAnswerKey; // Teacher's answer key for grading
+  final String? assessmentData; // AI Assessment JSON configuration
 
   Activity({
     required this.id,
@@ -28,16 +29,36 @@ class Activity {
     required this.totalPoints,
     required this.createdAt,
     List<String>? attachments,
+    List<String?>? attachmentUrls,
     String? attachmentName,
     this.answerSheetTemplate,
     this.teacherAnswerKey,
     this.assessmentData,
-  }) : attachments = attachments ?? (attachmentName != null ? [attachmentName] : []);
+  }) : attachments =
+           attachments ?? (attachmentName != null ? [attachmentName] : []),
+       attachmentUrls = attachmentUrls ?? [];
 
-  bool get hasAnswerSheetTemplate => answerSheetTemplate != null && answerSheetTemplate!.isNotEmpty;
-  bool get isAiAssessment => assessmentData != null && assessmentData!.isNotEmpty;
+  bool get hasAnswerSheetTemplate =>
+      answerSheetTemplate != null && answerSheetTemplate!.isNotEmpty;
+  bool get isAiAssessment =>
+      assessmentData != null && assessmentData!.isNotEmpty;
 
-  String? get attachmentName => attachments.isNotEmpty ? attachments.first : null;
+  String? get attachmentName =>
+      attachments.isNotEmpty ? attachments.first : null;
+
+  String? attachmentUrlAt(int index) {
+    final storedUrl = index < attachmentUrls.length
+        ? attachmentUrls[index]
+        : null;
+    if (storedUrl != null && storedUrl.isNotEmpty) return storedUrl;
+    if (index >= attachments.length) return null;
+
+    final legacyUrl = Uri.tryParse(attachments[index]);
+    return legacyUrl != null &&
+            (legacyUrl.scheme == 'https' || legacyUrl.scheme == 'http')
+        ? attachments[index]
+        : null;
+  }
 
   bool get isPastDeadline => DateTime.now().isAfter(deadline);
 
@@ -76,21 +97,22 @@ class Activity {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'description': description,
-        'classId': classId,
-        'teacherId': teacherId,
-        'type': type.name,
-        'deadline': deadline.toIso8601String(),
-        'totalPoints': totalPoints,
-        'createdAt': createdAt.toIso8601String(),
-        'attachments': attachments,
-        'attachmentName': attachmentName,
-        'answerSheetTemplate': answerSheetTemplate,
-        'teacherAnswerKey': teacherAnswerKey,
-        'assessmentData': assessmentData,
-      };
+    'id': id,
+    'title': title,
+    'description': description,
+    'classId': classId,
+    'teacherId': teacherId,
+    'type': type.name,
+    'deadline': deadline.toIso8601String(),
+    'totalPoints': totalPoints,
+    'createdAt': createdAt.toIso8601String(),
+    'attachments': attachments,
+    'attachmentUrls': attachmentUrls,
+    'attachmentName': attachmentName,
+    'answerSheetTemplate': answerSheetTemplate,
+    'teacherAnswerKey': teacherAnswerKey,
+    'assessmentData': assessmentData,
+  };
 
   factory Activity.fromMap(Map<String, dynamic> map) {
     List<String> parsedAttachments = [];
@@ -99,6 +121,11 @@ class Activity {
     } else if (map['attachmentName'] != null) {
       parsedAttachments = [map['attachmentName'].toString()];
     }
+    final parsedAttachmentUrls = map['attachmentUrls'] == null
+        ? <String?>[]
+        : List<String?>.from(
+            (map['attachmentUrls'] as List).map((url) => url?.toString()),
+          );
 
     return Activity(
       id: map['id'],
@@ -111,6 +138,7 @@ class Activity {
       totalPoints: (map['totalPoints'] as num).toDouble(),
       createdAt: DateTime.parse(map['createdAt']),
       attachments: parsedAttachments,
+      attachmentUrls: parsedAttachmentUrls,
       attachmentName: map['attachmentName'],
       answerSheetTemplate: map['answerSheetTemplate'],
       teacherAnswerKey: map['teacherAnswerKey'],
@@ -118,4 +146,3 @@ class Activity {
     );
   }
 }
-

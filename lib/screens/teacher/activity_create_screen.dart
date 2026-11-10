@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+
 import '../../providers/activity_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
@@ -27,6 +28,7 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
   ActivityType _type = ActivityType.assignment;
   DateTime _deadline = DateTime.now().add(const Duration(days: 7));
   final List<String> _attachmentNames = [];
+  final List<PlatformFile> _attachmentFiles = [];
   String? _answerSheetTemplate;
   String? _teacherAnswerKey;
   bool _loading = false;
@@ -43,9 +45,19 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
+      withData: true,
       allowedExtensions: [
-        'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx',
-        'jpg', 'jpeg', 'png', 'txt'
+        'pdf',
+        'doc',
+        'docx',
+        'ppt',
+        'pptx',
+        'xls',
+        'xlsx',
+        'jpg',
+        'jpeg',
+        'png',
+        'txt',
       ],
     );
     if (result != null && result.files.isNotEmpty) {
@@ -53,6 +65,7 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
         for (final f in result.files) {
           if (!_attachmentNames.contains(f.name)) {
             _attachmentNames.add(f.name);
+            _attachmentFiles.add(f);
           }
         }
         // Auto populate title if empty
@@ -81,14 +94,22 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
     );
     if (time == null) return;
     setState(() {
-      _deadline = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      _deadline = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
     });
   }
 
   Future<void> _generateWithAi() async {
     final topic = _titleCtrl.text.isNotEmpty
         ? _titleCtrl.text
-        : (_attachmentNames.isNotEmpty ? _attachmentNames.first : 'Module Lesson');
+        : (_attachmentNames.isNotEmpty
+              ? _attachmentNames.first
+              : 'Module Lesson');
 
     setState(() => _loading = true);
 
@@ -115,9 +136,11 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(geminiKey != null && geminiKey.isNotEmpty
-            ? '✨ Lodix AI generated custom activity tasks & rubric!'
-            : '✨ AI generated activity tasks & answer sheet template!'),
+        content: Text(
+          geminiKey != null && geminiKey.isNotEmpty
+              ? '✨ Lodix AI generated custom activity tasks & rubric!'
+              : '✨ AI generated activity tasks & answer sheet template!',
+        ),
         backgroundColor: AppTheme.primary,
       ),
     );
@@ -131,28 +154,44 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
     final activity = context.read<ActivityProvider>();
     final students = auth.studentsInClass(widget.classGroup.id);
 
-    await activity.createActivity(
-      title: _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim(),
-      classId: widget.classGroup.id,
-      teacherId: auth.currentUser!.id,
-      type: _type,
-      deadline: _deadline,
-      totalPoints: double.tryParse(_pointsCtrl.text) ?? 100,
-      attachments: _attachmentNames,
-      attachmentName: _attachmentNames.isNotEmpty ? _attachmentNames.first : null,
-      answerSheetTemplate: _answerSheetTemplate,
-      teacherAnswerKey: _teacherAnswerKey,
-      studentIds: students.map((s) => s.id).toList(),
-    );
+    try {
+      await activity.createActivity(
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        classId: widget.classGroup.id,
+        teacherId: auth.currentUser!.id,
+        type: _type,
+        deadline: _deadline,
+        totalPoints: double.tryParse(_pointsCtrl.text) ?? 100,
+        attachments: _attachmentNames,
+        attachmentFiles: _attachmentFiles,
+        attachmentName: _attachmentNames.isNotEmpty
+            ? _attachmentNames.first
+            : null,
+        answerSheetTemplate: _answerSheetTemplate,
+        teacherAnswerKey: _teacherAnswerKey,
+        studentIds: students.map((s) => s.id).toList(),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not post activity: $error'),
+          backgroundColor: AppTheme.statusMissing,
+        ),
+      );
+      return;
+    }
 
     if (!mounted) return;
     setState(() => _loading = false);
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text('Activity created successfully!'),
-          backgroundColor: Colors.green),
+        content: Text('Activity created successfully!'),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -167,9 +206,10 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
             const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             )
           else
             TextButton(onPressed: _submit, child: const Text('Post')),
@@ -184,21 +224,32 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
             children: [
               // Class chip
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.primarySubtle,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
+                  border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.15),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.class_rounded,
-                        color: AppTheme.primary, size: 18),
+                    const Icon(
+                      Icons.class_rounded,
+                      color: AppTheme.primary,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
-                    Text(widget.classGroup.displayName,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.primary)),
+                    Text(
+                      widget.classGroup.displayName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -237,7 +288,8 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                   backgroundColor: AppTheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 icon: const Icon(Icons.psychology_rounded, size: 20),
                 label: const Text(
@@ -253,7 +305,9 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                   foregroundColor: AppTheme.primary,
                   side: const BorderSide(color: AppTheme.primary, width: 1.5),
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 icon: const Icon(Icons.auto_awesome_rounded),
                 label: const Text(
@@ -268,16 +322,26 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.accentEmerald.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.accentEmerald.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppTheme.accentEmerald.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.verified_rounded, size: 16, color: AppTheme.accentEmerald),
+                      Icon(
+                        Icons.verified_rounded,
+                        size: 16,
+                        color: AppTheme.accentEmerald,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'AI Activity questions, student answer sheet & rubric attached!',
-                          style: TextStyle(fontSize: 12, color: AppTheme.accentEmerald, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.accentEmerald,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -333,8 +397,9 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: _pickDate,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: theme.colorScheme.outline)),
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: theme.colorScheme.outline),
+                ),
               ),
               const SizedBox(height: 16),
               // Attachments
@@ -359,6 +424,9 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                       onDeleted: () {
                         setState(() {
                           _attachmentNames.remove(name);
+                          _attachmentFiles.removeWhere(
+                            (file) => file.name == name,
+                          );
                         });
                       },
                       deleteIconColor: Colors.red,
@@ -380,15 +448,14 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
   }
 
   Activity _mockActivity(ActivityType t) => Activity(
-        id: '',
-        title: '',
-        description: '',
-        classId: '',
-        teacherId: '',
-        type: t,
-        deadline: DateTime.now(),
-        totalPoints: 100,
-        createdAt: DateTime.now(),
-      );
+    id: '',
+    title: '',
+    description: '',
+    classId: '',
+    teacherId: '',
+    type: t,
+    deadline: DateTime.now(),
+    totalPoints: 100,
+    createdAt: DateTime.now(),
+  );
 }
-

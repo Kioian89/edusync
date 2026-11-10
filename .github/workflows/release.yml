@@ -11,11 +11,12 @@ on:
         required: false
         default: 'v1.4.3'
       build_type:
-        description: 'Build Type'
+        description: 'Build an APK, publish a release, or publish a Shorebird patch'
         required: true
-        default: 'release'
+        default: 'build'
         type: choice
         options:
+          - build
           - release
           - patch
 
@@ -90,7 +91,7 @@ jobs:
             $DART_DEFINES 2>&1 | tee build_log.txt
 
       - name: Build APK (Release / Shorebird)
-        if: "${{ github.event.inputs.build_type != 'patch' }}"
+        if: "${{ github.event_name == 'push' || github.event.inputs.build_type == 'release' }}"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
         run: |
@@ -116,8 +117,14 @@ jobs:
             flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
           fi
 
+      - name: Build APK (Artifact Only)
+        if: "${{ github.event.inputs.build_type == 'build' }}"
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee build_log.txt
+
       - name: Upload Failure Log
-        if: failure()
+        if: "${{ failure() && (github.event_name == 'push' || github.event.inputs.build_type == 'release') }}"
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
@@ -143,7 +150,7 @@ jobs:
           fi
 
       - name: Publish GitHub Release
-        if: "${{ github.event.inputs.build_type != 'patch' }}"
+        if: "${{ github.event_name == 'push' || github.event.inputs.build_type == 'release' }}"
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
@@ -155,8 +162,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload APK Artifact
+        if: "${{ success() && github.event.inputs.build_type == 'build' }}"
+        uses: actions/upload-artifact@v4
+        with:
+          name: edusync-android-apk
+          path: build/app/outputs/flutter-apk/edusync.apk
+          if-no-files-found: error
+
       - name: Clean up diagnostic log on success
-        if: "${{ success() && github.event.inputs.build_type != 'patch' }}"
+        if: "${{ success() && (github.event_name == 'push' || github.event.inputs.build_type == 'release') }}"
         run: |
           TAG="${{ github.event.inputs.version_tag || github.ref_name }}"
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \

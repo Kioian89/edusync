@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/activity.dart';
 import '../models/submission.dart';
+import '../services/activity_attachment_service.dart';
 import '../theme/app_theme.dart';
 import 'status_badge.dart';
 
@@ -28,7 +30,8 @@ class ActivityCard extends StatelessWidget {
     final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
     final isPast = activity.isPastDeadline;
     final now = DateTime.now();
-    final isDueSoon = !isPast && activity.deadline.difference(now).inHours <= 24;
+    final isDueSoon =
+        !isPast && activity.deadline.difference(now).inHours <= 24;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
@@ -59,7 +62,10 @@ class ActivityCard extends StatelessWidget {
                   children: [
                     // Modern Type Tag
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: activity.typeColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
@@ -67,7 +73,11 @@ class ActivityCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(_getTypeIcon(activity.type), size: 13, color: activity.typeColor),
+                          Icon(
+                            _getTypeIcon(activity.type),
+                            size: 13,
+                            color: activity.typeColor,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             activity.typeLabel,
@@ -84,7 +94,10 @@ class ActivityCard extends StatelessWidget {
                     if (className != null && className!.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.surfaceSoft,
                           borderRadius: BorderRadius.circular(14),
@@ -136,7 +149,10 @@ class ActivityCard extends StatelessWidget {
                 const SizedBox(height: 14),
                 // Bottom Info Bar
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceSoft,
                     borderRadius: BorderRadius.circular(14),
@@ -149,7 +165,9 @@ class ActivityCard extends StatelessWidget {
                         size: 15,
                         color: isPast
                             ? AppTheme.statusMissing
-                            : (isDueSoon ? AppTheme.accentOrbit : AppTheme.textSecondary),
+                            : (isDueSoon
+                                  ? AppTheme.accentOrbit
+                                  : AppTheme.textSecondary),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -161,14 +179,21 @@ class ActivityCard extends StatelessWidget {
                             fontSize: 12,
                             color: isPast
                                 ? AppTheme.statusMissing
-                                : (isDueSoon ? AppTheme.accentOrbit : AppTheme.textSecondary),
-                            fontWeight: isPast || isDueSoon ? FontWeight.w800 : FontWeight.w600,
+                                : (isDueSoon
+                                      ? AppTheme.accentOrbit
+                                      : AppTheme.textSecondary),
+                            fontWeight: isPast || isDueSoon
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.primarySubtle,
                           borderRadius: BorderRadius.circular(8),
@@ -187,20 +212,42 @@ class ActivityCard extends StatelessWidget {
                 ),
                 if (activity.attachments.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.attach_file_rounded, size: 14, color: AppTheme.textMuted),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          activity.attachments.length == 1
-                              ? activity.attachments.first
-                              : '${activity.attachments.length} attached files',
-                          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.ellipsis,
+                  Semantics(
+                    button: true,
+                    label: 'Download attached activity files',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => _showAttachments(context),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.download_rounded,
+                                size: 14,
+                                color: AppTheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  activity.attachments.length == 1
+                                      ? activity.attachments.first
+                                      : '${activity.attachments.length} attached files • tap to open',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ],
@@ -209,6 +256,70 @@ class ActivityCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showAttachments(BuildContext context) async {
+    if (activity.attachments.length == 1) {
+      await _openAttachment(context, 0);
+      return;
+    }
+
+    final selectedIndex = await showModalBottomSheet<int>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.6,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Text(
+                  'Teacher attachments',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+              ),
+              for (var index = 0; index < activity.attachments.length; index++)
+                ListTile(
+                  leading: const Icon(Icons.download_rounded),
+                  title: Text(activity.attachments[index]),
+                  onTap: () => Navigator.pop(sheetContext, index),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selectedIndex != null && context.mounted) {
+      await _openAttachment(context, selectedIndex);
+    }
+  }
+
+  Future<void> _openAttachment(BuildContext context, int index) async {
+    final file = activity.attachments[index];
+    final url = activity.attachmentUrlAt(index);
+    if (url == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$file is not available to download. Ask the teacher to reattach it.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final opened = await ActivityAttachmentService.openDownloadUrl(url);
+      if (!opened) throw StateError('No app could open this file link.');
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open $file: $error')));
+    }
   }
 
   Widget _teacherProgress(BuildContext context) {

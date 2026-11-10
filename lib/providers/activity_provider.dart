@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+
 import '../models/activity.dart';
 import '../models/announcement.dart';
 import '../models/submission.dart';
 import '../models/user.dart';
 import '../services/firestore_sync_service.dart';
+import '../services/activity_attachment_service.dart';
 import '../services/notification_service.dart';
 
 class ActivityProvider extends ChangeNotifier {
@@ -29,12 +33,11 @@ class ActivityProvider extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
 
   List<Announcement> announcementsForClass(String classId) =>
-      _announcements.where((a) => a.classId == classId).toList()
-        ..sort((a, b) {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return b.createdAt.compareTo(a.createdAt);
-        });
+      _announcements.where((a) => a.classId == classId).toList()..sort((a, b) {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
   List<Announcement> announcementsForClasses(List<String> classIds) {
     if (classIds.isEmpty) return [];
@@ -64,10 +67,14 @@ class ActivityProvider extends ChangeNotifier {
   List<Submission> submissionsForStudent(String studentId) =>
       _submissions.where((s) => s.studentId == studentId).toList();
 
-  Submission? submissionForStudentActivity(String studentId, String activityId) {
+  Submission? submissionForStudentActivity(
+    String studentId,
+    String activityId,
+  ) {
     try {
-      return _submissions
-          .firstWhere((s) => s.studentId == studentId && s.activityId == activityId);
+      return _submissions.firstWhere(
+        (s) => s.studentId == studentId && s.activityId == activityId,
+      );
     } catch (_) {
       return null;
     }
@@ -85,18 +92,21 @@ class ActivityProvider extends ChangeNotifier {
 
     if (activitiesJson != null) {
       final list = jsonDecode(activitiesJson) as List;
-      _activities =
-          list.map((m) => Activity.fromMap(Map<String, dynamic>.from(m))).toList();
+      _activities = list
+          .map((m) => Activity.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
     }
     if (submissionsJson != null) {
       final list = jsonDecode(submissionsJson) as List;
-      _submissions =
-          list.map((m) => Submission.fromMap(Map<String, dynamic>.from(m))).toList();
+      _submissions = list
+          .map((m) => Submission.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
     }
     if (announcementsJson != null) {
       final list = jsonDecode(announcementsJson) as List;
-      _announcements =
-          list.map((m) => Announcement.fromMap(Map<String, dynamic>.from(m))).toList();
+      _announcements = list
+          .map((m) => Announcement.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
     }
   }
 
@@ -105,11 +115,17 @@ class ActivityProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        'activities', jsonEncode(_activities.map((a) => a.toMap()).toList()));
+      'activities',
+      jsonEncode(_activities.map((a) => a.toMap()).toList()),
+    );
     await prefs.setString(
-        'submissions', jsonEncode(_submissions.map((s) => s.toMap()).toList()));
+      'submissions',
+      jsonEncode(_submissions.map((s) => s.toMap()).toList()),
+    );
     await prefs.setString(
-        'announcements', jsonEncode(_announcements.map((a) => a.toMap()).toList()));
+      'announcements',
+      jsonEncode(_announcements.map((a) => a.toMap()).toList()),
+    );
     _isSyncing = false;
     notifyListeners();
   }
@@ -165,14 +181,22 @@ class ActivityProvider extends ChangeNotifier {
     required DateTime deadline,
     required double totalPoints,
     List<String>? attachments,
+    List<PlatformFile>? attachmentFiles,
     String? attachmentName,
     String? answerSheetTemplate,
     String? teacherAnswerKey,
     String? assessmentData,
     required List<String> studentIds,
   }) async {
+    final activityId = _uuid.v4();
+    final attachmentUrls = attachmentFiles == null
+        ? <String>[]
+        : await ActivityAttachmentService.uploadFiles(
+            activityId: activityId,
+            files: attachmentFiles,
+          );
     final activity = Activity(
-      id: _uuid.v4(),
+      id: activityId,
       title: title,
       description: description,
       classId: classId,
@@ -181,7 +205,9 @@ class ActivityProvider extends ChangeNotifier {
       deadline: deadline,
       totalPoints: totalPoints,
       createdAt: DateTime.now(),
-      attachments: attachments,
+      attachments:
+          attachmentFiles?.map((file) => file.name).toList() ?? attachments,
+      attachmentUrls: attachmentUrls,
       attachmentName: attachmentName,
       answerSheetTemplate: answerSheetTemplate,
       teacherAnswerKey: teacherAnswerKey,
@@ -255,7 +281,10 @@ class ActivityProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> publishAssessmentActivity(Activity activity, {List<String> studentIds = const []}) async {
+  Future<void> publishAssessmentActivity(
+    Activity activity, {
+    List<String> studentIds = const [],
+  }) async {
     final existingIdx = _activities.indexWhere((a) => a.id == activity.id);
     if (existingIdx != -1) {
       _activities[existingIdx] = activity;
@@ -296,14 +325,24 @@ class ActivityProvider extends ChangeNotifier {
     required String studentId,
     required String studentName,
     List<String>? fileNames,
+    List<PlatformFile>? attachmentFiles,
+    List<String?>? fileUrls,
     String? fileName,
     String? studentAnswerSheet,
     String? assessmentSubmissionData,
     double? grade,
     SubmissionStatus status = SubmissionStatus.submitted,
   }) async {
-    final idx = _submissions
-        .indexWhere((s) => s.activityId == activityId && s.studentId == studentId);
+    final uploadedFileUrls = attachmentFiles == null
+        ? fileUrls
+        : await ActivityAttachmentService.uploadSubmissionFiles(
+            activityId: activityId,
+            studentId: studentId,
+            files: attachmentFiles,
+          );
+    final idx = _submissions.indexWhere(
+      (s) => s.activityId == activityId && s.studentId == studentId,
+    );
 
     Submission targetSub;
     if (idx != -1) {
@@ -316,6 +355,7 @@ class ActivityProvider extends ChangeNotifier {
         submittedAt: DateTime.now(),
         grade: grade ?? _submissions[idx].grade,
         fileNames: fileNames,
+        fileUrls: uploadedFileUrls,
         fileName: fileName,
         studentAnswerSheet: studentAnswerSheet,
         assessmentSubmissionData: assessmentSubmissionData,
@@ -331,6 +371,7 @@ class ActivityProvider extends ChangeNotifier {
         submittedAt: DateTime.now(),
         grade: grade,
         fileNames: fileNames,
+        fileUrls: uploadedFileUrls,
         fileName: fileName,
         studentAnswerSheet: studentAnswerSheet,
         assessmentSubmissionData: assessmentSubmissionData,
@@ -371,7 +412,10 @@ class ActivityProvider extends ChangeNotifier {
         submittedAt: s.submittedAt,
         grade: grade,
         feedback: feedback,
-        fileName: s.fileName,
+        fileNames: s.fileNames,
+        fileUrls: s.fileUrls,
+        studentAnswerSheet: s.studentAnswerSheet,
+        assessmentSubmissionData: s.assessmentSubmissionData,
       );
       _submissions[idx] = gradedSub;
       await _saveData();
@@ -405,7 +449,10 @@ class ActivityProvider extends ChangeNotifier {
         submittedAt: s.submittedAt,
         grade: 0,
         feedback: s.feedback,
-        fileName: s.fileName,
+        fileNames: s.fileNames,
+        fileUrls: s.fileUrls,
+        studentAnswerSheet: s.studentAnswerSheet,
+        assessmentSubmissionData: s.assessmentSubmissionData,
       );
       _submissions[idx] = missingSub;
       await _saveData();
@@ -439,26 +486,26 @@ class ActivityProvider extends ChangeNotifier {
     _announcementsSub?.cancel();
 
     // Stream activities
-    _activitiesSub =
-        FirestoreSyncService.streamActivitiesForClasses(classIds).listen((remote) {
-      if (remote.isNotEmpty) {
-        bool changed = false;
-        for (final act in remote) {
-          final idx = _activities.indexWhere((a) => a.id == act.id);
-          if (idx != -1) {
-            _activities[idx] = act;
-            changed = true;
-          } else {
-            _activities.add(act);
-            changed = true;
+    _activitiesSub = FirestoreSyncService.streamActivitiesForClasses(classIds)
+        .listen((remote) {
+          if (remote.isNotEmpty) {
+            bool changed = false;
+            for (final act in remote) {
+              final idx = _activities.indexWhere((a) => a.id == act.id);
+              if (idx != -1) {
+                _activities[idx] = act;
+                changed = true;
+              } else {
+                _activities.add(act);
+                changed = true;
+              }
+            }
+            if (changed) {
+              _saveData();
+              notifyListeners();
+            }
           }
-        }
-        if (changed) {
-          _saveData();
-          notifyListeners();
-        }
-      }
-    }, onError: (e) => debugPrint('Activities stream error: $e'));
+        }, onError: (e) => debugPrint('Activities stream error: $e'));
 
     // Stream submissions: for activities in the enrolled classes
     final classActivityIds = _activities
@@ -469,16 +516,20 @@ class ActivityProvider extends ChangeNotifier {
         ? FirestoreSyncService.streamSubmissionsForActivities(
             classActivityIds.isNotEmpty
                 ? classActivityIds
-                : _activities.map((a) => a.id).toList())
+                : _activities.map((a) => a.id).toList(),
+          )
         : FirestoreSyncService.streamSubmissionsForStudent(userId);
 
     _submissionsSub = subStream.listen((remote) {
       if (remote.isNotEmpty) {
         bool changed = false;
         for (final sub in remote) {
-          final idx = _submissions.indexWhere((s) =>
-              s.id == sub.id ||
-              (s.activityId == sub.activityId && s.studentId == sub.studentId));
+          final idx = _submissions.indexWhere(
+            (s) =>
+                s.id == sub.id ||
+                (s.activityId == sub.activityId &&
+                    s.studentId == sub.studentId),
+          );
           if (idx != -1) {
             _submissions[idx] = sub;
             changed = true;
@@ -496,25 +547,26 @@ class ActivityProvider extends ChangeNotifier {
 
     // Stream announcements
     _announcementsSub =
-        FirestoreSyncService.streamAnnouncementsForClasses(classIds).listen((remote) {
-      if (remote.isNotEmpty) {
-        bool changed = false;
-        for (final ann in remote) {
-          final idx = _announcements.indexWhere((a) => a.id == ann.id);
-          if (idx != -1) {
-            _announcements[idx] = ann;
-            changed = true;
-          } else {
-            _announcements.add(ann);
-            changed = true;
-          }
-        }
-        if (changed) {
-          _saveData();
-          notifyListeners();
-        }
-      }
-    }, onError: (e) => debugPrint('Announcements stream error: $e'));
+        FirestoreSyncService.streamAnnouncementsForClasses(classIds)
+            .listen((remote) {
+              if (remote.isNotEmpty) {
+                bool changed = false;
+                for (final ann in remote) {
+                  final idx = _announcements.indexWhere((a) => a.id == ann.id);
+                  if (idx != -1) {
+                    _announcements[idx] = ann;
+                    changed = true;
+                  } else {
+                    _announcements.add(ann);
+                    changed = true;
+                  }
+                }
+                if (changed) {
+                  _saveData();
+                  notifyListeners();
+                }
+              }
+            }, onError: (e) => debugPrint('Announcements stream error: $e'));
   }
 
   @override
@@ -538,7 +590,9 @@ class ActivityProvider extends ChangeNotifier {
     // Header
     buffer.write('Student Name');
     for (final a in acts) {
-      buffer.write(',${a.title.replaceAll(',', ';')} (/${a.totalPoints.toInt()})');
+      buffer.write(
+        ',${a.title.replaceAll(',', ';')} (/${a.totalPoints.toInt()})',
+      );
     }
     buffer.write(',Total Earned,Total Possible,Percentage\n');
 
@@ -558,8 +612,9 @@ class ActivityProvider extends ChangeNotifier {
         if (grade != null) earned += grade;
         possible += a.totalPoints;
       }
-      final pct =
-          possible > 0 ? ((earned / possible) * 100).toStringAsFixed(1) : '0.0';
+      final pct = possible > 0
+          ? ((earned / possible) * 100).toStringAsFixed(1)
+          : '0.0';
       buffer.write(',$earned,$possible,$pct%\n');
     }
 
@@ -596,7 +651,8 @@ class ActivityProvider extends ChangeNotifier {
       Activity(
         id: _uuid.v4(),
         title: 'Quiz 1 – Scientific Method',
-        description: '15-item multiple choice quiz about the scientific method.',
+        description:
+            '15-item multiple choice quiz about the scientific method.',
         classId: classId,
         teacherId: teacherId,
         type: ActivityType.quiz,
@@ -607,8 +663,7 @@ class ActivityProvider extends ChangeNotifier {
       Activity(
         id: _uuid.v4(),
         title: 'Group Science Project',
-        description:
-            'Build a prototype demonstrating a scientific concept of your choice.',
+        description: 'Build a prototype demonstrating a scientific concept of your choice.',
         classId: classId,
         teacherId: teacherId,
         type: ActivityType.project,
@@ -621,21 +676,24 @@ class ActivityProvider extends ChangeNotifier {
     for (final a in acts) {
       _activities.add(a);
       for (int i = 0; i < studentIds.length; i++) {
-        _submissions.add(Submission(
-          id: _uuid.v4(),
-          activityId: a.id,
-          studentId: studentIds[i],
-          studentName: studentNames[i],
-          status: SubmissionStatus.pending,
-        ));
+        _submissions.add(
+          Submission(
+            id: _uuid.v4(),
+            activityId: a.id,
+            studentId: studentIds[i],
+            studentName: studentNames[i],
+            status: SubmissionStatus.pending,
+          ),
+        );
       }
     }
 
     // Mark first student's quiz as graded
     if (studentIds.isNotEmpty) {
       final quizActivity = acts[1];
-      final subIdx = _submissions.indexWhere((s) =>
-          s.activityId == quizActivity.id && s.studentId == studentIds[0]);
+      final subIdx = _submissions.indexWhere(
+        (s) => s.activityId == quizActivity.id && s.studentId == studentIds[0],
+      );
       if (subIdx != -1) {
         final s = _submissions[subIdx];
         _submissions[subIdx] = Submission(
@@ -660,8 +718,7 @@ class ActivityProvider extends ChangeNotifier {
           classId: classId,
           teacherName: 'Teacher',
           title: '📌 Welcome to EduSync!',
-          message:
-              'Welcome to our class management system. All activities, grades, and announcements will be posted here. Check in regularly!',
+          message: 'Welcome to our class management system. All activities, grades, and announcements will be posted here. Check in regularly!',
           createdAt: now.subtract(const Duration(days: 3)),
           isPinned: true,
         ),
@@ -670,8 +727,7 @@ class ActivityProvider extends ChangeNotifier {
           classId: classId,
           teacherName: 'Teacher',
           title: 'Quiz 1 Reminder',
-          message:
-              'Quiz 1 on the Scientific Method is due tomorrow. Review your notes carefully. Good luck!',
+          message: 'Quiz 1 on the Scientific Method is due tomorrow. Review your notes carefully. Good luck!',
           createdAt: now.subtract(const Duration(days: 1)),
           isPinned: false,
         ),

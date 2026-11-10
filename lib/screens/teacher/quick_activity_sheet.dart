@@ -1,8 +1,10 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+
 import '../../providers/activity_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/activity.dart';
@@ -28,6 +30,7 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
   ActivityType _type = ActivityType.seatwork;
   DateTime _deadline = DateTime.now().add(const Duration(hours: 3));
   final List<String> _attachmentNames = [];
+  final List<PlatformFile> _attachmentFiles = [];
   bool _useAiAssistant = true;
   String? _answerSheetTemplate;
   String? _teacherAnswerKey;
@@ -55,9 +58,19 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
+      withData: true,
       allowedExtensions: [
-        'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx',
-        'jpg', 'jpeg', 'png', 'txt'
+        'pdf',
+        'doc',
+        'docx',
+        'ppt',
+        'pptx',
+        'xls',
+        'xlsx',
+        'jpg',
+        'jpeg',
+        'png',
+        'txt',
       ],
     );
 
@@ -66,12 +79,15 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
         for (final f in result.files) {
           if (!_attachmentNames.contains(f.name)) {
             _attachmentNames.add(f.name);
+            _attachmentFiles.add(f);
           }
         }
         // Auto-fill title from first file if title is currently empty
         if (_titleCtrl.text.trim().isEmpty && _attachmentNames.isNotEmpty) {
           final first = _attachmentNames.first.toLowerCase();
-          if (first.contains('module') || first.contains('lesson') || first.contains('chapter')) {
+          if (first.contains('module') ||
+              first.contains('lesson') ||
+              first.contains('chapter')) {
             _type = ActivityType.module;
           }
           _titleCtrl.text = _cleanFileName(_attachmentNames.first);
@@ -120,22 +136,35 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
     final activityProvider = context.read<ActivityProvider>();
     final students = auth.studentsInClass(widget.classGroup.id);
 
-    await activityProvider.createActivity(
-      title: title,
-      description: _descCtrl.text.trim().isNotEmpty
-          ? _descCtrl.text.trim()
-          : 'Please complete and submit the activity based on the attached document(s).',
-      classId: widget.classGroup.id,
-      teacherId: auth.currentUser!.id,
-      type: _type,
-      deadline: _deadline,
-      totalPoints: points,
-      attachments: _attachmentNames,
-      attachmentName: _attachmentNames.isNotEmpty ? _attachmentNames.first : null,
-      answerSheetTemplate: _useAiAssistant ? _answerSheetTemplate : null,
-      teacherAnswerKey: _useAiAssistant ? _teacherAnswerKey : null,
-      studentIds: students.map((s) => s.id).toList(),
-    );
+    try {
+      await activityProvider.createActivity(
+        title: title,
+        description: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : 'Please complete and submit the activity based on the attached document(s).',
+        classId: widget.classGroup.id,
+        teacherId: auth.currentUser!.id,
+        type: _type,
+        deadline: _deadline,
+        totalPoints: points,
+        attachments: _attachmentNames,
+        attachmentFiles: _attachmentFiles,
+        attachmentName: _attachmentNames.isNotEmpty
+            ? _attachmentNames.first
+            : null,
+        answerSheetTemplate: _useAiAssistant ? _answerSheetTemplate : null,
+        teacherAnswerKey: _useAiAssistant ? _teacherAnswerKey : null,
+        studentIds: students.map((s) => s.id).toList(),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not post activity: $error'),
+          backgroundColor: AppTheme.statusMissing,
+        ),
+      );
+      return;
+    }
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -177,7 +206,11 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                     color: AppTheme.primarySubtle,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.menu_book_rounded, color: AppTheme.primary, size: 24),
+                  child: const Icon(
+                    Icons.menu_book_rounded,
+                    color: AppTheme.primary,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -211,7 +244,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
               onTap: _pickFiles,
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.primary.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(16),
@@ -250,7 +286,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
               const SizedBox(height: 12),
               Text(
                 'Selected Files (${_attachmentNames.length})',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 6),
               Wrap(
@@ -267,6 +306,9 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                     onDeleted: () {
                       setState(() {
                         _attachmentNames.remove(name);
+                        _attachmentFiles.removeWhere(
+                          (file) => file.name == name,
+                        );
                       });
                     },
                     deleteIconColor: Colors.red,
@@ -283,7 +325,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                     value: _type,
                     decoration: const InputDecoration(
                       labelText: 'Type',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       isDense: true,
                     ),
                     items: ActivityType.values.map((t) {
@@ -316,7 +361,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Points',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       isDense: true,
                     ),
                   ),
@@ -330,7 +378,9 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
               decoration: BoxDecoration(
                 color: _useAiAssistant
                     ? AppTheme.primarySubtle
-                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    : theme.colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.4,
+                      ),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: _useAiAssistant
@@ -364,7 +414,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                             ),
                             Text(
                               'Auto-generates activity tasks, rubric, and student answer sheet',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ],
                         ),
@@ -387,16 +440,28 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                     const Divider(height: 16),
                     Row(
                       children: [
-                        const Icon(Icons.check_circle_outline, color: Colors.green, size: 14),
+                        const Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.green,
+                          size: 14,
+                        ),
                         const SizedBox(width: 6),
                         const Text(
                           'Ready-to-fill student answer sheet & rubric attached',
-                          style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const Spacer(),
                         TextButton(
-                          onPressed: () => setState(() => _applyAiActivityGeneration()),
-                          child: const Text('Regenerate', style: TextStyle(fontSize: 12)),
+                          onPressed: () =>
+                              setState(() => _applyAiActivityGeneration()),
+                          child: const Text(
+                            'Regenerate',
+                            style: TextStyle(fontSize: 12),
+                          ),
                         ),
                       ],
                     ),
@@ -453,7 +518,13 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                   onPressed: () {
                     final now = DateTime.now();
                     setState(() {
-                      _deadline = DateTime(now.year, now.month, now.day, 23, 59);
+                      _deadline = DateTime(
+                        now.year,
+                        now.month,
+                        now.day,
+                        23,
+                        59,
+                      );
                     });
                   },
                 ),
@@ -475,7 +546,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.rocket_launch),
               label: const Text('Launch Activity to Class'),
@@ -486,4 +560,3 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
     );
   }
 }
-
