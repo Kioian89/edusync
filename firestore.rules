@@ -149,68 +149,39 @@ service cloud.firestore {
     // SUBMISSIONS COLLECTION
     // -------------------------------------------------------------------------
     match /submissions/{submissionId} {
-      // Current class members can read their own work; teachers can read their
-      // class activities' submissions.
+      // Students can read their own work; teachers can read their class submissions.
       allow read: if isAuthenticated()
         && (
-          activityStudent(resource.data.activityId, resource.data.studentId)
+          request.auth.uid == resource.data.studentId
           || activityTeacher(resource.data.activityId)
         );
+
+      // Student can create their submission attempt; teachers can create/assign.
       allow create: if isAuthenticated()
         && (
-          activityTeacher(request.resource.data.activityId)
+          request.auth.uid == request.resource.data.studentId
+          || activityTeacher(request.resource.data.activityId)
+        );
+
+      // Students can update their own submission (excluding grade/feedback),
+      // and teachers can grade or update.
+      allow update: if isAuthenticated()
+        && (
+          activityTeacher(resource.data.activityId)
           || (
-            activityStudent(
-              request.resource.data.activityId,
-              request.resource.data.studentId
-            )
-            && request.resource.data.status in ['pending', 'submitted']
-            && request.resource.data.get('grade', null) == null
-            && request.resource.data.get('feedback', null) == null
-            && request.resource.data.get('interruptionCount', 0) == 0
-            && request.resource.data.get('interruptionTimestamps', [])
-              .size() == 0
+            request.auth.uid == resource.data.studentId
+            && request.resource.data.studentId == resource.data.studentId
+            && request.resource.data.activityId == resource.data.activityId
+            && request.resource.data.get('grade', null) == resource.data.get('grade', null)
+            && request.resource.data.get('feedback', null) == resource.data.get('feedback', null)
           )
         );
-      allow update: if activityTeacher(resource.data.activityId)
-        || (
-          activityStudent(resource.data.activityId, resource.data.studentId)
-          && request.resource.data.activityId == resource.data.activityId
-          && request.resource.data.studentId == resource.data.studentId
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'status',
-            'submittedAt',
-            'fileNames',
-            'fileUrls',
-            'fileName',
-            'studentAnswerSheet',
-            'assessmentSubmissionData',
-            'startedAt',
-            'interruptionCount',
-            'interruptionTimestamps'
-          ])
-          && request.resource.data.status in ['pending', 'submitted']
-          && (
-            request.resource.data.status == resource.data.status
-            || (
-              resource.data.status == 'pending'
-              && request.resource.data.status == 'submitted'
-            )
-          )
-          && request.resource.data.get('interruptionCount', 0)
-            >= resource.data.get('interruptionCount', 0)
-          && request.resource.data.get('interruptionCount', 0)
-            <= resource.data.get('interruptionCount', 0) + 1
-          && request.resource.data.get('interruptionTimestamps', []).size()
-            == request.resource.data.get('interruptionCount', 0)
-          && request.resource.data.get('interruptionTimestamps', [])
-            .hasAll(resource.data.get('interruptionTimestamps', []))
-          && (
-            !('startedAt' in resource.data)
-            || request.resource.data.startedAt == resource.data.startedAt
-          )
+
+      allow delete: if isAuthenticated()
+        && (
+          request.auth.uid == resource.data.studentId
+          || activityTeacher(resource.data.activityId)
         );
-      allow delete: if activityTeacher(resource.data.activityId);
     }
 
     // -------------------------------------------------------------------------
