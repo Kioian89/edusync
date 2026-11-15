@@ -169,7 +169,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](./LICEN
 
 <div align="center">
 
-Made with ❤️ using Flutter & Firebase
+Made with ❤️ using Flutter,Firebase & Supabase
 
 ⭐ **Star this repo if EduSync helps your classroom!** ⭐
 
