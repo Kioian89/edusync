@@ -103,18 +103,26 @@ jobs:
           BUILD_SUCCESS=false
           if [ -n "$SHOREBIRD_TOKEN" ]; then
             echo "Attempting Shorebird base release APK..."
-            shorebird release android --artifact=apk $DART_DEFINES --split-debug-info=symbols/ 2>&1 | tee build_log.txt
-            if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            shorebird release android --artifact=apk -- $DART_DEFINES --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+            SHOREBIRD_EXIT=${PIPESTATUS[0]}
+            if [ $SHOREBIRD_EXIT -eq 0 ]; then
               echo "✅ Shorebird release build completed successfully."
               BUILD_SUCCESS=true
             else
-              echo "⚠️ Shorebird failed (exit ${PIPESTATUS[0]}) — falling back to standard Flutter release build..."
+              echo "⚠️ Shorebird failed (exit $SHOREBIRD_EXIT) — falling back to standard Flutter release build..."
             fi
           fi
 
           if [ "$BUILD_SUCCESS" != "true" ]; then
             echo "Running standard Flutter release build..."
             flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+            FLUTTER_EXIT=${PIPESTATUS[0]}
+            if [ $FLUTTER_EXIT -ne 0 ]; then
+              echo "❌ Flutter release build failed with exit code $FLUTTER_EXIT"
+              echo "=== Recent build log ==="
+              tail -n 80 build_log.txt || true
+              exit $FLUTTER_EXIT
+            fi
           fi
 
       - name: Build APK (Artifact Only)
@@ -122,17 +130,6 @@ jobs:
         run: |
           set -o pipefail
           flutter build apk --release 2>&1 | tee build_log.txt
-
-      - name: Upload Failure Log
-        if: "${{ failure() && (github.event_name == 'push' || github.event.inputs.build_type == 'release') }}"
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
-          name: Build Log - ${{ github.event.inputs.version_tag || github.ref_name }}
-          files: build_log.txt
-          body: "Release build failed on GitHub Actions runner. Build log attached."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Rename APK to edusync.apk
         if: "${{ github.event.inputs.build_type != 'patch' }}"
@@ -148,6 +145,17 @@ jobs:
             find build -maxdepth 4 || true
             exit 1
           fi
+
+      - name: Upload Failure Log
+        if: "${{ failure() && (github.event_name == 'push' || github.event.inputs.build_type == 'release') }}"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version_tag || github.ref_name }}
+          name: Build Log - ${{ github.event.inputs.version_tag || github.ref_name }}
+          files: build_log.txt
+          body: "Release build failed on GitHub Actions runner. Build log attached."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish GitHub Release
         if: "${{ github.event_name == 'push' || github.event.inputs.build_type == 'release' }}"
