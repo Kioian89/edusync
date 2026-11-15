@@ -9,13 +9,11 @@ class AiActivityHelper {
     String? apiKey,
   }) async {
     if (apiKey != null && apiKey.trim().isNotEmpty) {
-      try {
-        return await GeminiService.generateActivityTask(
-          apiKey: apiKey.trim(),
-          topic: topic,
-          fileNames: fileNames,
-        );
-      } catch (_) {}
+      return GeminiService.generateActivityTask(
+        apiKey: apiKey.trim(),
+        topic: topic,
+        fileNames: fileNames,
+      );
     }
     return generateActivityContent(topic: topic, fileNames: fileNames);
   }
@@ -142,4 +140,3 @@ class AiActivityHelper {
     }
   }
 }
-

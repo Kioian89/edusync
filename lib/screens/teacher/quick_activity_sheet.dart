@@ -12,6 +12,7 @@ import '../../models/class_group.dart';
 import '../../services/ai_activity_helper.dart';
 import '../../providers/gemini_assistant_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/activity_protection_controls.dart';
 
 class QuickActivitySheet extends StatefulWidget {
   final ClassGroup classGroup;
@@ -34,6 +35,10 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
   bool _useAiAssistant = true;
   String? _answerSheetTemplate;
   String? _teacherAnswerKey;
+  ActivityAttachmentAccess _attachmentAccess =
+      ActivityAttachmentAccess.download;
+  int? _timeLimitMinutes;
+  bool _monitorFocusLoss = false;
   bool _loading = false;
 
   @override
@@ -102,18 +107,25 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
 
   Future<void> _applyAiActivityGeneration() async {
     final geminiKey = context.read<GeminiAssistantProvider>().apiKey;
-    final generated = await AiActivityHelper.generateActivityAsync(
-      topic: _titleCtrl.text.isNotEmpty ? _titleCtrl.text : 'Module Activity',
-      fileNames: _attachmentNames,
-      apiKey: geminiKey,
-    );
-    if (!mounted) return;
-    setState(() {
-      _descCtrl.text = generated['description'] ?? _descCtrl.text;
-      _answerSheetTemplate = generated['answerSheetTemplate'];
-      _teacherAnswerKey = generated['teacherKey'];
-      _pointsCtrl.text = '50';
-    });
+    try {
+      final generated = await AiActivityHelper.generateActivityAsync(
+        topic: _titleCtrl.text.isNotEmpty ? _titleCtrl.text : 'Module Activity',
+        fileNames: _attachmentNames,
+        apiKey: geminiKey,
+      );
+      if (!mounted) return;
+      setState(() {
+        _descCtrl.text = generated['description'] ?? _descCtrl.text;
+        _answerSheetTemplate = generated['answerSheetTemplate'];
+        _teacherAnswerKey = generated['teacherKey'];
+        _pointsCtrl.text = '50';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI activity generation failed: $error')),
+      );
+    }
   }
 
   Future<void> _publishQuickActivity() async {
@@ -152,6 +164,9 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
             : null,
         answerSheetTemplate: _useAiAssistant ? _answerSheetTemplate : null,
         teacherAnswerKey: _useAiAssistant ? _teacherAnswerKey : null,
+        attachmentAccess: _attachmentAccess,
+        timeLimitMinutes: _timeLimitMinutes,
+        monitorFocusLoss: _monitorFocusLoss,
         studentIds: students.map((s) => s.id).toList(),
       );
     } catch (error) {
@@ -540,6 +555,18 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
               ),
             ),
             const SizedBox(height: 20),
+            ActivityProtectionControls(
+              attachmentAccess: _attachmentAccess,
+              onAttachmentAccessChanged: (value) =>
+                  setState(() => _attachmentAccess = value),
+              timeLimitMinutes: _timeLimitMinutes,
+              onTimeLimitChanged: (value) =>
+                  setState(() => _timeLimitMinutes = value),
+              monitorFocusLoss: _monitorFocusLoss,
+              onMonitorFocusLossChanged: (value) =>
+                  setState(() => _monitorFocusLoss = value),
+            ),
+            const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: _loading ? null : _publishQuickActivity,
               icon: _loading

@@ -5,6 +5,7 @@ class ClassGroup {
   final String section;
   final String teacherId;
   final List<String> studentIds;
+  final int maxStudents;
 
   ClassGroup({
     required this.id,
@@ -13,6 +14,7 @@ class ClassGroup {
     required this.section,
     required this.teacherId,
     required this.studentIds,
+    this.maxStudents = 30,
   });
 
   String get displayName => '$subject - $section';
@@ -24,6 +26,7 @@ class ClassGroup {
         'section': section,
         'teacherId': teacherId,
         'studentIds': studentIds,
+        'maxStudents': maxStudents,
       };
 
   factory ClassGroup.fromMap(Map<String, dynamic> map) => ClassGroup(
@@ -35,6 +38,7 @@ class ClassGroup {
         studentIds: map['studentIds'] != null
             ? List<String>.from(map['studentIds'])
             : <String>[],
+        maxStudents: int.tryParse(map['maxStudents']?.toString() ?? '') ?? 30,
       );
 }
 

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
-import 'firebase_ai_service.dart';
 
 /// Supported AI providers for Lodix Universal AI Engine
 enum AiProvider {
@@ -189,25 +188,8 @@ class GeminiService {
     String? systemInstruction,
     required String modelName,
   }) async {
-    // 0. Primary: Try Firebase AI Logic SDK first if Firebase is available
-    if (FirebaseAiService.isAvailable) {
-      try {
-        final fbResponse = await FirebaseAiService.generateWithFirebaseAI(
-          prompt: prompt,
-          chatHistory: chatHistory,
-          systemInstruction: systemInstruction,
-          modelName: modelName,
-        );
-        if (fbResponse != null && fbResponse.isNotEmpty) {
-          return fbResponse;
-        }
-      } catch (e) {
-        debugPrint('Firebase AI generation note: $e');
-      }
-    }
-
     try {
-      // 1. Primary: Use Google Generative AI official SDK
+      // Use the provider key selected by the teacher directly.
       final model = GenerativeModel(
         model: modelName,
         apiKey: apiKey,

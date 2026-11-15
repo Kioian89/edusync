@@ -28,8 +28,10 @@ class _GeminiAssistantScreenState extends State<GeminiAssistantScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final user = context.read<AuthProvider>().currentUser;
-        context.read<GeminiAssistantProvider>().init(userId: user?.id);
+        final auth = context.read<AuthProvider>();
+        context.read<GeminiAssistantProvider>().init(
+              userId: auth.isTeacher ? auth.currentUser?.id : null,
+            );
       }
     });
   }

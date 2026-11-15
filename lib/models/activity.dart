@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 enum ActivityType { module, assignment, quiz, project, exam, seatwork }
+enum ActivityAttachmentAccess { download, viewOnly }
 
 class Activity {
   final String id;
@@ -14,6 +15,10 @@ class Activity {
   final DateTime createdAt;
   final List<String> attachments;
   final List<String?> attachmentUrls;
+  final List<String?> attachmentStoragePaths;
+  final ActivityAttachmentAccess attachmentAccess;
+  final int? timeLimitMinutes;
+  final bool monitorFocusLoss;
   final String? answerSheetTemplate; // In-app answer sheet format/template
   final String? teacherAnswerKey; // Teacher's answer key for grading
   final String? assessmentData; // AI Assessment JSON configuration
@@ -30,13 +35,18 @@ class Activity {
     required this.createdAt,
     List<String>? attachments,
     List<String?>? attachmentUrls,
+    List<String?>? attachmentStoragePaths,
     String? attachmentName,
+    this.attachmentAccess = ActivityAttachmentAccess.download,
+    this.timeLimitMinutes,
+    this.monitorFocusLoss = false,
     this.answerSheetTemplate,
     this.teacherAnswerKey,
     this.assessmentData,
   }) : attachments =
-           attachments ?? (attachmentName != null ? [attachmentName] : []),
-       attachmentUrls = attachmentUrls ?? [];
+           attachments ??            (attachmentName != null ? [attachmentName] : []),
+       attachmentUrls = attachmentUrls ?? [],
+       attachmentStoragePaths = attachmentStoragePaths ?? [];
 
   bool get hasAnswerSheetTemplate =>
       answerSheetTemplate != null && answerSheetTemplate!.isNotEmpty;
@@ -59,6 +69,16 @@ class Activity {
         ? attachments[index]
         : null;
   }
+
+  String? attachmentStoragePathAt(int index) =>
+      index < attachmentStoragePaths.length
+          ? attachmentStoragePaths[index]
+          : null;
+
+  bool get requiresProtectedAttempt =>
+      attachmentAccess == ActivityAttachmentAccess.viewOnly ||
+      timeLimitMinutes != null ||
+      monitorFocusLoss;
 
   bool get isPastDeadline => DateTime.now().isAfter(deadline);
 
@@ -108,13 +128,19 @@ class Activity {
     'createdAt': createdAt.toIso8601String(),
     'attachments': attachments,
     'attachmentUrls': attachmentUrls,
+    'attachmentStoragePaths': attachmentStoragePaths,
+    'attachmentAccess': attachmentAccess.name,
+    'timeLimitMinutes': timeLimitMinutes,
+    'monitorFocusLoss': monitorFocusLoss,
     'attachmentName': attachmentName,
     'answerSheetTemplate': answerSheetTemplate,
-    'teacherAnswerKey': teacherAnswerKey,
     'assessmentData': assessmentData,
   };
 
-  factory Activity.fromMap(Map<String, dynamic> map) {
+  factory Activity.fromMap(
+    Map<String, dynamic> map, {
+    bool includeTeacherAnswerKey = false,
+  }) {
     List<String> parsedAttachments = [];
     if (map['attachments'] != null) {
       parsedAttachments = List<String>.from(map['attachments']);
@@ -126,6 +152,17 @@ class Activity {
         : List<String?>.from(
             (map['attachmentUrls'] as List).map((url) => url?.toString()),
           );
+    final parsedAttachmentPaths = map['attachmentStoragePaths'] == null
+        ? <String?>[]
+        : List<String?>.from(
+            (map['attachmentStoragePaths'] as List).map(
+              (path) => path?.toString(),
+            ),
+          );
+    final attachmentAccess = ActivityAttachmentAccess.values.firstWhere(
+      (access) => access.name == map['attachmentAccess'],
+      orElse: () => ActivityAttachmentAccess.download,
+    );
 
     return Activity(
       id: map['id'],
@@ -139,10 +176,41 @@ class Activity {
       createdAt: DateTime.parse(map['createdAt']),
       attachments: parsedAttachments,
       attachmentUrls: parsedAttachmentUrls,
+      attachmentStoragePaths: parsedAttachmentPaths,
       attachmentName: map['attachmentName'],
+      attachmentAccess: attachmentAccess,
+      timeLimitMinutes: (map['timeLimitMinutes'] as num?)?.toInt(),
+      monitorFocusLoss: map['monitorFocusLoss'] == true,
       answerSheetTemplate: map['answerSheetTemplate'],
-      teacherAnswerKey: map['teacherAnswerKey'],
+      teacherAnswerKey: includeTeacherAnswerKey
+          ? map['teacherAnswerKey']?.toString()
+          : null,
       assessmentData: map['assessmentData'],
     );
   }
+
+  Activity copyWith({
+    String? teacherAnswerKey,
+    List<String?>? attachmentStoragePaths,
+  }) => Activity(
+    id: id,
+    title: title,
+    description: description,
+    classId: classId,
+    teacherId: teacherId,
+    type: type,
+    deadline: deadline,
+    totalPoints: totalPoints,
+    createdAt: createdAt,
+    attachments: attachments,
+    attachmentUrls: attachmentUrls,
+    attachmentStoragePaths:
+        attachmentStoragePaths ?? this.attachmentStoragePaths,
+    attachmentAccess: attachmentAccess,
+    timeLimitMinutes: timeLimitMinutes,
+    monitorFocusLoss: monitorFocusLoss,
+    answerSheetTemplate: answerSheetTemplate,
+    teacherAnswerKey: teacherAnswerKey ?? this.teacherAnswerKey,
+    assessmentData: assessmentData,
+  );
 }

@@ -186,16 +186,14 @@ class ActivityProvider extends ChangeNotifier {
     String? answerSheetTemplate,
     String? teacherAnswerKey,
     String? assessmentData,
+    ActivityAttachmentAccess attachmentAccess =
+        ActivityAttachmentAccess.download,
+    int? timeLimitMinutes,
+    bool monitorFocusLoss = false,
     required List<String> studentIds,
   }) async {
     final activityId = _uuid.v4();
-    final attachmentUrls = attachmentFiles == null
-        ? <String>[]
-        : await ActivityAttachmentService.uploadFiles(
-            activityId: activityId,
-            files: attachmentFiles,
-          );
-    final activity = Activity(
+    var activity = Activity(
       id: activityId,
       title: title,
       description: description,
@@ -207,13 +205,49 @@ class ActivityProvider extends ChangeNotifier {
       createdAt: DateTime.now(),
       attachments:
           attachmentFiles?.map((file) => file.name).toList() ?? attachments,
-      attachmentUrls: attachmentUrls,
+      attachmentStoragePaths: const [],
       attachmentName: attachmentName,
+      attachmentAccess: attachmentAccess,
+      timeLimitMinutes: timeLimitMinutes,
+      monitorFocusLoss: monitorFocusLoss,
       answerSheetTemplate: answerSheetTemplate,
       teacherAnswerKey: teacherAnswerKey,
       assessmentData: assessmentData,
     );
-    _activities.add(activity);
+    var uploadedStoragePaths = <String>[];
+    try {
+      if (FirestoreSyncService.isAvailable) {
+        await FirestoreSyncService.saveActivity(activity);
+      }
+      if (attachmentFiles != null && attachmentFiles.isNotEmpty) {
+        uploadedStoragePaths = await ActivityAttachmentService.uploadFiles(
+          activityId: activityId,
+          classId: classId,
+          teacherId: teacherId,
+          files: attachmentFiles,
+        );
+        activity = activity.copyWith(
+          attachmentStoragePaths: uploadedStoragePaths,
+        );
+        if (FirestoreSyncService.isAvailable) {
+          await FirestoreSyncService.saveActivity(activity);
+        }
+      }
+    } catch (_) {
+      await ActivityAttachmentService.deleteStorageFiles(uploadedStoragePaths);
+      if (FirestoreSyncService.isAvailable) {
+        await FirestoreSyncService.deleteActivity(activityId);
+      }
+      rethrow;
+    }
+    final existingActivityIndex = _activities.indexWhere(
+      (existing) => existing.id == activity.id,
+    );
+    if (existingActivityIndex == -1) {
+      _activities.add(activity);
+    } else {
+      _activities[existingActivityIndex] = activity;
+    }
 
     final newSubmissions = <Submission>[];
     for (final studentId in studentIds) {
@@ -230,7 +264,6 @@ class ActivityProvider extends ChangeNotifier {
 
     await _saveData();
     if (FirestoreSyncService.isAvailable) {
-      await FirestoreSyncService.saveActivity(activity);
       for (final s in newSubmissions) {
         await FirestoreSyncService.saveSubmission(s);
       }
@@ -322,6 +355,7 @@ class ActivityProvider extends ChangeNotifier {
 
   Future<void> submitActivity({
     required String activityId,
+    required String classId,
     required String studentId,
     required String studentName,
     List<String>? fileNames,
@@ -337,6 +371,7 @@ class ActivityProvider extends ChangeNotifier {
         ? fileUrls
         : await ActivityAttachmentService.uploadSubmissionFiles(
             activityId: activityId,
+            classId: classId,
             studentId: studentId,
             files: attachmentFiles,
           );
@@ -359,6 +394,9 @@ class ActivityProvider extends ChangeNotifier {
         fileName: fileName,
         studentAnswerSheet: studentAnswerSheet,
         assessmentSubmissionData: assessmentSubmissionData,
+        startedAt: _submissions[idx].startedAt,
+        interruptionCount: _submissions[idx].interruptionCount,
+        interruptionTimestamps: _submissions[idx].interruptionTimestamps,
       );
       _submissions[idx] = targetSub;
     } else {
@@ -381,7 +419,10 @@ class ActivityProvider extends ChangeNotifier {
 
     await _saveData();
     if (FirestoreSyncService.isAvailable) {
-      await FirestoreSyncService.saveSubmission(targetSub);
+      await FirestoreSyncService.saveSubmission(
+        targetSub,
+        rethrowOnFailure: true,
+      );
     }
     // Notify teacher that a submission was received
     final activity = _activities.firstWhere(
@@ -392,6 +433,98 @@ class ActivityProvider extends ChangeNotifier {
       studentName: studentName.isNotEmpty ? studentName : 'A student',
       activityTitle: activity.title,
     );
+    notifyListeners();
+  }
+
+  Future<DateTime> startActivityAttempt({
+    required String activityId,
+    required String studentId,
+    required String studentName,
+  }) async {
+    final idx = _submissions.indexWhere(
+      (submission) =>
+          submission.activityId == activityId &&
+          submission.studentId == studentId,
+    );
+    final startedAt = idx == -1
+        ? DateTime.now()
+        : (_submissions[idx].startedAt ?? DateTime.now());
+    if (idx == -1 || _submissions[idx].startedAt == null) {
+      final previous = idx == -1 ? null : _submissions[idx];
+      final submission = Submission(
+        id: previous?.id ?? _uuid.v4(),
+        activityId: activityId,
+        studentId: studentId,
+        studentName: studentName,
+        status: previous?.status ?? SubmissionStatus.pending,
+        submittedAt: previous?.submittedAt,
+        grade: previous?.grade,
+        feedback: previous?.feedback,
+        fileNames: previous?.fileNames,
+        fileUrls: previous?.fileUrls,
+        studentAnswerSheet: previous?.studentAnswerSheet,
+        assessmentSubmissionData: previous?.assessmentSubmissionData,
+        startedAt: startedAt,
+        interruptionCount: previous?.interruptionCount ?? 0,
+        interruptionTimestamps: previous?.interruptionTimestamps,
+      );
+      if (idx == -1) {
+        _submissions.add(submission);
+      } else {
+        _submissions[idx] = submission;
+      }
+      await _saveData();
+      if (FirestoreSyncService.isAvailable) {
+        await FirestoreSyncService.saveSubmission(
+          submission,
+          rethrowOnFailure: true,
+        );
+      }
+      notifyListeners();
+    }
+    return startedAt;
+  }
+
+  Future<void> recordActivityInterruption({
+    required String activityId,
+    required String studentId,
+  }) async {
+    final idx = _submissions.indexWhere(
+      (submission) =>
+          submission.activityId == activityId &&
+          submission.studentId == studentId,
+    );
+    if (idx == -1) {
+      throw StateError('The activity submission could not be found.');
+    }
+    final previous = _submissions[idx];
+    if (previous.status != SubmissionStatus.pending) return;
+    final timestamp = DateTime.now();
+    final submission = Submission(
+      id: previous.id,
+      activityId: previous.activityId,
+      studentId: previous.studentId,
+      studentName: previous.studentName,
+      status: previous.status,
+      submittedAt: previous.submittedAt,
+      grade: previous.grade,
+      feedback: previous.feedback,
+      fileNames: previous.fileNames,
+      fileUrls: previous.fileUrls,
+      studentAnswerSheet: previous.studentAnswerSheet,
+      assessmentSubmissionData: previous.assessmentSubmissionData,
+      startedAt: previous.startedAt,
+      interruptionCount: previous.interruptionCount + 1,
+      interruptionTimestamps: [...previous.interruptionTimestamps, timestamp],
+    );
+    _submissions[idx] = submission;
+    await _saveData();
+    if (FirestoreSyncService.isAvailable) {
+      await FirestoreSyncService.saveSubmission(
+        submission,
+        rethrowOnFailure: true,
+      );
+    }
     notifyListeners();
   }
 
@@ -416,6 +549,9 @@ class ActivityProvider extends ChangeNotifier {
         fileUrls: s.fileUrls,
         studentAnswerSheet: s.studentAnswerSheet,
         assessmentSubmissionData: s.assessmentSubmissionData,
+        startedAt: s.startedAt,
+        interruptionCount: s.interruptionCount,
+        interruptionTimestamps: s.interruptionTimestamps,
       );
       _submissions[idx] = gradedSub;
       await _saveData();
@@ -453,6 +589,9 @@ class ActivityProvider extends ChangeNotifier {
         fileUrls: s.fileUrls,
         studentAnswerSheet: s.studentAnswerSheet,
         assessmentSubmissionData: s.assessmentSubmissionData,
+        startedAt: s.startedAt,
+        interruptionCount: s.interruptionCount,
+        interruptionTimestamps: s.interruptionTimestamps,
       );
       _submissions[idx] = missingSub;
       await _saveData();
@@ -486,8 +625,11 @@ class ActivityProvider extends ChangeNotifier {
     _announcementsSub?.cancel();
 
     // Stream activities
-    _activitiesSub = FirestoreSyncService.streamActivitiesForClasses(classIds)
-        .listen((remote) {
+    _activitiesSub =
+        FirestoreSyncService.streamActivitiesForClasses(
+          classIds,
+          isTeacher: isTeacher,
+        ).listen((remote) {
           if (remote.isNotEmpty) {
             bool changed = false;
             for (final act in remote) {

@@ -1,11 +1,14 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/class_group.dart';
 import '../models/activity.dart';
 import '../models/submission.dart';
 import '../models/announcement.dart';
+import 'supabase_storage_service.dart';
 
 /// Centralized service handling real-time synchronization between EduSync
 /// and Cloud Firestore with offline cache support.
@@ -42,12 +45,12 @@ class FirestoreSyncService {
         .where('teacherId', isEqualTo: teacherId)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return ClassGroup.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return ClassGroup.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Stream of classes a student is enrolled in.
@@ -60,12 +63,12 @@ class FirestoreSyncService {
         .where('studentIds', arrayContains: studentId)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return ClassGroup.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return ClassGroup.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Save or update a class group.
@@ -74,7 +77,10 @@ class FirestoreSyncService {
     if (db == null) return;
 
     try {
-      await db.collection('classes').doc(cls.id).set(cls.toMap(), SetOptions(merge: true));
+      await db
+          .collection('classes')
+          .doc(cls.id)
+          .set(cls.toMap(), SetOptions(merge: true));
     } catch (e) {
       debugPrint('Firestore saveClass error: $e');
     }
@@ -105,7 +111,7 @@ class FirestoreSyncService {
       return ClassGroup.fromMap(data);
     } catch (e) {
       debugPrint('Firestore getClassById error: $e');
-      return null;
+      rethrow;
     }
   }
 
@@ -117,22 +123,50 @@ class FirestoreSyncService {
     final db = _db;
     if (db == null) return;
 
+    final batch = db.batch();
+    final classRef = db.collection('classes').doc(classId);
+    final userRef = db.collection('users').doc(studentId);
+
+    batch.set(classRef, {
+      'studentIds': FieldValue.arrayUnion([studentId]),
+    }, SetOptions(merge: true));
+    batch.set(userRef, {
+      'classId': classId,
+      'enrolledClassIds': FieldValue.arrayUnion([classId]),
+    }, SetOptions(merge: true));
+
+    await batch.commit();
+
     try {
-      final batch = db.batch();
-      final classRef = db.collection('classes').doc(classId);
-      final userRef = db.collection('users').doc(studentId);
-
-      batch.set(classRef, {
-        'studentIds': FieldValue.arrayUnion([studentId]),
-      }, SetOptions(merge: true));
-      batch.set(userRef, {
-        'classId': classId,
-        'enrolledClassIds': FieldValue.arrayUnion([classId]),
-      }, SetOptions(merge: true));
-
-      await batch.commit();
+      await SupabaseStorageService.syncUserClaims(
+        userId: studentId,
+        classId: classId,
+      );
     } catch (e) {
-      debugPrint('Firestore addStudentToClass error: $e');
+      debugPrint('Claim sync after addStudentToClass warning: $e');
+    }
+  }
+
+  /// Remove a student from a class roster. The class owner's Firestore rule
+  /// authorizes this write, and the Supabase Edge Function refreshes the user's claims.
+  static Future<void> removeStudentFromClass({
+    required String classId,
+    required String studentId,
+  }) async {
+    final db = _db;
+    if (db == null) return;
+
+    await db.collection('classes').doc(classId).update({
+      'studentIds': FieldValue.arrayRemove([studentId]),
+    });
+
+    try {
+      await SupabaseStorageService.syncUserClaims(
+        userId: studentId,
+        classId: classId,
+      );
+    } catch (e) {
+      debugPrint('Claim sync after removeStudentFromClass warning: $e');
     }
   }
 
@@ -141,7 +175,10 @@ class FirestoreSyncService {
   // ---------------------------------------------------------------------------
 
   /// Stream activities for a list of class IDs.
-  static Stream<List<Activity>> streamActivitiesForClasses(List<String> classIds) {
+  static Stream<List<Activity>> streamActivitiesForClasses(
+    List<String> classIds, {
+    required bool isTeacher,
+  }) {
     final db = _db;
     if (db == null || classIds.isEmpty) return const Stream.empty();
 
@@ -153,12 +190,44 @@ class FirestoreSyncService {
         .where('classId', whereIn: safeClassIds)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return Activity.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return Activity.fromMap(data, includeTeacherAnswerKey: isTeacher);
+          }).toList();
+        })
+        .asyncMap(
+          (activities) => isTeacher
+              ? Future.wait(activities.map(_loadTeacherAnswerKey))
+              : activities,
+        );
+  }
+
+  static Future<Activity> _loadTeacherAnswerKey(Activity activity) async {
+    final db = _db;
+    if (db == null) return activity;
+    final activityRef = db.collection('activities').doc(activity.id);
+    final privateRef = activityRef
+        .collection('teacher_private')
+        .doc('answer_key');
+    final privateSnapshot = await privateRef.get();
+    final privateKey = privateSnapshot.data()?['teacherAnswerKey']?.toString();
+    if (privateKey != null && privateKey.isNotEmpty) {
+      return activity.copyWith(teacherAnswerKey: privateKey);
+    }
+
+    final legacyKey = activity.teacherAnswerKey;
+    if (legacyKey != null && legacyKey.isNotEmpty) {
+      final batch = db.batch()
+        ..set(privateRef, {
+          'teacherId': activity.teacherId,
+          'teacherAnswerKey': legacyKey,
+        })
+        ..update(activityRef, {'teacherAnswerKey': FieldValue.delete()});
+      await batch.commit();
+      return activity;
+    }
+    return activity;
   }
 
   /// Create or update an activity.
@@ -166,14 +235,25 @@ class FirestoreSyncService {
     final db = _db;
     if (db == null) return;
 
-    try {
-      await db.collection('activities').doc(activity.id).set(
-            activity.toMap(),
-            SetOptions(merge: true),
-          );
-    } catch (e) {
-      debugPrint('Firestore saveActivity error: $e');
+    final activityRef = db.collection('activities').doc(activity.id);
+    final privateAnswerKeyRef = activityRef
+        .collection('teacher_private')
+        .doc('answer_key');
+    final answerKey = activity.teacherAnswerKey;
+    final activityData = activity.toMap()
+      ..['teacherAnswerKey'] = FieldValue.delete()
+      ..['teacherAnswerKeyUpdatedAt'] = FieldValue.serverTimestamp();
+    final batch = db.batch()
+      ..set(activityRef, activityData, SetOptions(merge: true));
+    if (answerKey == null || answerKey.isEmpty) {
+      batch.delete(privateAnswerKeyRef);
+    } else {
+      batch.set(privateAnswerKeyRef, {
+        'teacherId': activity.teacherId,
+        'teacherAnswerKey': answerKey,
+      });
     }
+    await batch.commit();
   }
 
   /// Delete an activity and its associated submissions.
@@ -182,7 +262,12 @@ class FirestoreSyncService {
     if (db == null) return;
 
     try {
-      await db.collection('activities').doc(activityId).delete();
+      final activityRef = db.collection('activities').doc(activityId);
+      await activityRef
+          .collection('teacher_private')
+          .doc('answer_key')
+          .delete();
+      await activityRef.delete();
 
       // Clean up submissions for this activity
       final subSnap = await db
@@ -205,7 +290,9 @@ class FirestoreSyncService {
   // ---------------------------------------------------------------------------
 
   /// Stream submissions for a student.
-  static Stream<List<Submission>> streamSubmissionsForStudent(String studentId) {
+  static Stream<List<Submission>> streamSubmissionsForStudent(
+    String studentId,
+  ) {
     final db = _db;
     if (db == null) return const Stream.empty();
 
@@ -214,16 +301,18 @@ class FirestoreSyncService {
         .where('studentId', isEqualTo: studentId)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return Submission.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return Submission.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Stream submissions for a specific activity (for teachers).
-  static Stream<List<Submission>> streamSubmissionsForActivity(String activityId) {
+  static Stream<List<Submission>> streamSubmissionsForActivity(
+    String activityId,
+  ) {
     final db = _db;
     if (db == null) return const Stream.empty();
 
@@ -232,16 +321,18 @@ class FirestoreSyncService {
         .where('activityId', isEqualTo: activityId)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return Submission.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return Submission.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Stream all submissions across activities taught by a teacher.
-  static Stream<List<Submission>> streamSubmissionsForActivities(List<String> activityIds) {
+  static Stream<List<Submission>> streamSubmissionsForActivities(
+    List<String> activityIds,
+  ) {
     final db = _db;
     if (db == null || activityIds.isEmpty) return const Stream.empty();
 
@@ -252,28 +343,32 @@ class FirestoreSyncService {
         .where('activityId', whereIn: safeIds)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return Submission.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return Submission.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Save or update a student submission (grades, status, answers).
-  static Future<void> saveSubmission(Submission submission) async {
+  static Future<void> saveSubmission(
+    Submission submission, {
+    bool rethrowOnFailure = false,
+  }) async {
     final db = _db;
     if (db == null) return;
 
     try {
       // Use deterministic ID: {activityId}_{studentId}
       final docId = '${submission.activityId}_${submission.studentId}';
-      await db.collection('submissions').doc(docId).set(
-            submission.toMap(),
-            SetOptions(merge: true),
-          );
+      await db
+          .collection('submissions')
+          .doc(docId)
+          .set(submission.toMap(), SetOptions(merge: true));
     } catch (e) {
       debugPrint('Firestore saveSubmission error: $e');
+      if (rethrowOnFailure) rethrow;
     }
   }
 
@@ -282,7 +377,9 @@ class FirestoreSyncService {
   // ---------------------------------------------------------------------------
 
   /// Stream announcements for a list of class IDs.
-  static Stream<List<Announcement>> streamAnnouncementsForClasses(List<String> classIds) {
+  static Stream<List<Announcement>> streamAnnouncementsForClasses(
+    List<String> classIds,
+  ) {
     final db = _db;
     if (db == null || classIds.isEmpty) return const Stream.empty();
 
@@ -293,12 +390,12 @@ class FirestoreSyncService {
         .where('classId', whereIn: safeIds)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return Announcement.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return Announcement.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Save an announcement.
@@ -307,10 +404,10 @@ class FirestoreSyncService {
     if (db == null) return;
 
     try {
-      await db.collection('announcements').doc(announcement.id).set(
-            announcement.toMap(),
-            SetOptions(merge: true),
-          );
+      await db
+          .collection('announcements')
+          .doc(announcement.id)
+          .set(announcement.toMap(), SetOptions(merge: true));
     } catch (e) {
       debugPrint('Firestore saveAnnouncement error: $e');
     }
@@ -328,4 +425,3 @@ class FirestoreSyncService {
     }
   }
 }
-

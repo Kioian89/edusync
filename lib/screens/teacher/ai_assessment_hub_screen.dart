@@ -142,26 +142,36 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
 
     final gemini = context.read<GeminiAssistantProvider>();
     if (promptKeyIfMissing && !gemini.hasKey) {
-      await GeminiApiKeyDialog.show(context);
+      final configured = await GeminiApiKeyDialog.show(context);
+      if (!configured || !mounted) return;
     }
 
     setState(() => _isAnalyzing = true);
     // Read apiKey before the async gap to avoid use_build_context_synchronously lint
     final geminiKey = gemini.apiKey;
 
-    final result = await AssessmentAiService.analyzeLessonMaterial(
-      lessonContent: text,
-      subject: _subjectCtrl.text.trim(),
-      gradeLevel: _gradeCtrl.text.trim(),
-      apiKey: geminiKey,
-    );
+    try {
+      final result = await AssessmentAiService.analyzeLessonMaterial(
+        lessonContent: text,
+        subject: _subjectCtrl.text.trim(),
+        gradeLevel: _gradeCtrl.text.trim(),
+        apiKey: geminiKey,
+      );
 
-    setState(() {
-      _analysisResult = result;
-      _questionCount = result.recommendedQuestionCount;
-      _difficulty = result.detectedDifficulty;
-      _isAnalyzing = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _analysisResult = result;
+        _questionCount = result.recommendedQuestionCount;
+        _difficulty = result.detectedDifficulty;
+        _isAnalyzing = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI lesson analysis failed: $error')),
+      );
+    }
   }
 
   Future<void> _generateAssessment() async {
@@ -183,24 +193,34 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
     final gemini = context.read<GeminiAssistantProvider>();
     if (!gemini.hasKey) {
       final configured = await GeminiApiKeyDialog.show(context);
-      if (!configured && !mounted) return;
+      if (!configured || !mounted) return;
     }
 
     setState(() => _isGenerating = true);
-    final geminiKey = context.read<GeminiAssistantProvider>().apiKey;
+    final geminiKey = gemini.apiKey;
     final auth = context.read<AuthProvider>();
     final assessmentProv = context.read<AssessmentProvider>();
 
-    final questions = await AssessmentAiService.generateAssessmentQuestions(
-      lessonContent: text,
-      title: _titleCtrl.text.trim().isEmpty ? 'Assessment' : _titleCtrl.text.trim(),
-      subject: _subjectCtrl.text.trim(),
-      gradeLevel: _gradeCtrl.text.trim(),
-      questionCount: _questionCount,
-      questionTypes: _selectedTypes.toList(),
-      difficulty: _difficulty,
-      apiKey: geminiKey,
-    );
+    List<AssessmentQuestion> questions;
+    try {
+      questions = await AssessmentAiService.generateAssessmentQuestions(
+        lessonContent: text,
+        title: _titleCtrl.text.trim().isEmpty ? 'Assessment' : _titleCtrl.text.trim(),
+        subject: _subjectCtrl.text.trim(),
+        gradeLevel: _gradeCtrl.text.trim(),
+        questionCount: _questionCount,
+        questionTypes: _selectedTypes.toList(),
+        difficulty: _difficulty,
+        apiKey: geminiKey,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isGenerating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI assessment generation failed: $error')),
+      );
+      return;
+    }
 
     // Save material to repository
     if (_analysisResult != null) {
@@ -416,7 +436,9 @@ Respiration proceeds through four phases: Glycolysis in the cytoplasm, Pyruvate 
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  onPressed: _isAnalyzing ? null : _runAnalysis,
+                  onPressed: _isAnalyzing
+                      ? null
+                      : () => _runAnalysis(promptKeyIfMissing: true),
                   icon: _isAnalyzing
                       ? const SizedBox(
                           width: 14,

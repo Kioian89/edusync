@@ -118,8 +118,10 @@ STRICT INSTRUCTION: Output ONLY valid JSON in the following exact format without
         if (parsed != null && parsed is Map<String, dynamic>) {
           return AssessmentAiAnalysisResult.fromMap(parsed);
         }
+        throw const FormatException('AI returned an invalid lesson analysis.');
       } catch (e) {
-        debugPrint('Gemini analysis error, falling back to local heuristic: $e');
+        debugPrint('Gemini analysis error: $e');
+        rethrow;
       }
     }
 
@@ -212,8 +214,10 @@ STRICT OUTPUT FORMAT: Return ONLY a raw JSON array of objects without markdown f
             return list;
           }
         }
+        throw const FormatException('AI returned no valid assessment questions.');
       } catch (e) {
         debugPrint('Gemini assessment generation error: $e');
+        rethrow;
       }
     }
 
@@ -281,21 +285,14 @@ OUTPUT FORMAT: Return raw JSON only:
             'feedback': parsed['feedback']?.toString() ?? 'Evaluated by AI Assistant.',
           };
         }
+        throw const FormatException('AI returned an invalid grading suggestion.');
       } catch (e) {
         debugPrint('AI grading helper error: $e');
+        rethrow;
       }
     }
 
-    // Local heuristic
-    final wordCount = studentAnswer.trim().split(RegExp(r'\s+')).length;
-    final score = wordCount >= 30
-        ? maxPoints
-        : (wordCount >= 15 ? (maxPoints * 0.75) : (maxPoints * 0.5));
-
-    return {
-      'suggestedScore': double.parse(score.toStringAsFixed(1)),
-      'feedback': 'Answer reviewed based on length and relevance. Teacher review recommended.',
-    };
+    throw StateError('No teacher AI key is available; manual grading is required.');
   }
 
   // Helper to extract JSON from model output

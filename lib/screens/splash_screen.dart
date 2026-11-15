@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../providers/auth_provider.dart';
 import '../providers/activity_provider.dart';
+import '../providers/gemini_assistant_provider.dart';
 import 'auth/landing_screen.dart';
+import 'auth/profile_setup_screen.dart';
 import 'onboarding/app_guide_onboarding_screen.dart';
 import 'teacher/teacher_home.dart';
 import 'student/student_home.dart';
@@ -28,11 +31,17 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _controller = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
-    _fadeAnim = Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-    _scaleAnim = Tween<double>(begin: 0.7, end: 1).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _fadeAnim = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _scaleAnim = Tween<double>(
+      begin: 0.7,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
     _controller.forward();
     _init();
   }
@@ -43,7 +52,9 @@ class _SplashScreenState extends State<SplashScreen>
 
     final auth = context.read<AuthProvider>();
     final activity = context.read<ActivityProvider>();
+    final gemini = context.read<GeminiAssistantProvider>();
     await auth.init();
+    await gemini.init(userId: auth.isTeacher ? auth.currentUser?.id : null);
     await activity.init();
 
     // Start Firestore real-time sync if already logged in from a previous session
@@ -85,12 +96,17 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateByRole(User user) {
+    if (!user.hasCompleteProfile) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+      );
+      return;
+    }
     Widget screen = user.role == UserRole.teacher
         ? const TeacherHome()
         : const StudentHome();
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => screen),
-    );
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
@@ -104,9 +120,7 @@ class _SplashScreenState extends State<SplashScreen>
     final theme = Theme.of(context);
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: AppTheme.heroCardGradient,
-        ),
+        decoration: BoxDecoration(gradient: AppTheme.heroCardGradient),
         child: Center(
           child: FadeTransition(
             opacity: _fadeAnim,
@@ -173,4 +187,3 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-

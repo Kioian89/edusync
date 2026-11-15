@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+node_modules/
 
 # IntelliJ related
 *.iml
@@ -80,3 +81,5 @@ shorebird.token
 
 # Widget Preview related
 .widget_preview/
+
+supabase/.temp/

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/gemini_assistant_provider.dart';
 import '../services/gemini_service.dart';
@@ -248,7 +247,7 @@ class GeminiApiKeyDialog {
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Private to your device. Your API key is stored safely on this phone only and never shared with other users or students.',
+                                'Use this one key for the AI assistant, activity generation, and assessment tools. It is stored securely on this device and is not shared with students.',
                                 style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
@@ -298,6 +297,13 @@ class GeminiApiKeyDialog {
                             TextButton(
                               onPressed: () async {
                                 await gemini.removeApiKey();
+                                if (gemini.hasKey) {
+                                  setModalState(() {
+                                    localError = gemini.errorMessage ??
+                                        'Could not remove the AI key.';
+                                  });
+                                  return;
+                                }
                                 if (sheetCtx.mounted) {
                                   Navigator.pop(sheetCtx, true);
                                 }
@@ -344,19 +350,8 @@ class GeminiApiKeyDialog {
                                     });
 
                                     try {
-                                      final success = await gemini
-                                          .setApiKey(entered)
-                                          .timeout(
-                                        const Duration(seconds: 7),
-                                        onTimeout: () async {
-                                          // Safety fallback: save locally if validation times out
-                                          final prefs =
-                                              await SharedPreferences.getInstance();
-                                          await prefs.setString(
-                                              'teacher_gemini_api_key', entered);
-                                          return true;
-                                        },
-                                      );
+                                      final success =
+                                          await gemini.setApiKey(entered);
 
                                       setModalState(() => isSubmitting = false);
 
@@ -423,6 +418,8 @@ class GeminiApiKeyDialog {
       },
     );
 
+    keyCtrl.clear();
+    keyCtrl.dispose();
     return result == true;
   }
 

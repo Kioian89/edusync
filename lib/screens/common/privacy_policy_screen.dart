@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_theme.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
@@ -93,7 +94,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
             const SizedBox(height: 24),
             const Text(
               'Last Updated: November 2026',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -124,7 +129,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
               content:
                   'EduSync operates using a hybrid offline-first architecture:\n'
                   '• Local Storage: Class groups, drafts, and preferences are saved locally on your device for full offline usability.\n'
-                  '• Cloud Sync: When an internet connection is active, data synchronizes with Google Cloud Firestore over encrypted TLS protocols.',
+                  '• Cloud Sync: When an internet connection is active, data synchronizes with Google Cloud Firestore over encrypted TLS protocols.\n\n'
+                  'During first-time profile setup, students provide a student ID, birthday, course or program, year level, and assigned section. '
+                  'Teachers provide an employee ID, department, and courses taught. Age is calculated from the birthday. '
+                  'These onboarding details are stored in a private profile document that only the account owner can read or update. '
+                  'A student’s assigned section is compared with the class record when joining by QR code.',
             ),
 
             _buildSection(

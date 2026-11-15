@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'providers/auth_provider.dart';
 import 'providers/activity_provider.dart';
 import 'providers/gemini_assistant_provider.dart';
@@ -10,6 +11,7 @@ import 'providers/assessment_provider.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/notification_service.dart';
+import 'services/supabase_storage_service.dart';
 import 'widgets/connectivity_overlay.dart';
 
 void main() async {
@@ -19,6 +21,11 @@ void main() async {
     await NotificationService.initialize();
   } catch (e) {
     debugPrint('Firebase/Notification initialization error: $e');
+  }
+  try {
+    await SupabaseStorageService.initializeFromDefines();
+  } catch (e) {
+    debugPrint('Supabase initialization error: $e');
   }
   runApp(const EduSyncApp());
 }
@@ -74,14 +81,23 @@ class EduSyncApp extends StatelessWidget {
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: AppTheme.borderLight, width: 1.2),
+              borderSide: const BorderSide(
+                color: AppTheme.borderLight,
+                width: 1.2,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: AppTheme.borderLight, width: 1.2),
+              borderSide: const BorderSide(
+                color: AppTheme.borderLight,
+                width: 1.2,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
@@ -96,7 +112,10 @@ class EduSyncApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+              ),
             ),
           ),
         ),

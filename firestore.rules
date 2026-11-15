@@ -12,14 +12,87 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function activityTeacher(activityId) {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/activities/$(activityId))
+          .data.teacherId == request.auth.uid;
+    }
+
+    function classTeacher(classId) {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/classes/$(classId))
+          .data.teacherId == request.auth.uid;
+    }
+
+    function classMember(classId) {
+      let classGroup = get(
+        /databases/$(database)/documents/classes/$(classId)
+      ).data;
+      return isAuthenticated()
+        && (
+          classGroup.teacherId == request.auth.uid
+          || request.auth.uid in classGroup.studentIds
+        );
+    }
+
+    function activityStudent(activityId, studentId) {
+      let activity = get(
+        /databases/$(database)/documents/activities/$(activityId)
+      ).data;
+      let classGroup = get(
+        /databases/$(database)/documents/classes/$(activity.classId)
+      ).data;
+      return isAuthenticated()
+        && request.auth.uid == studentId
+        && studentId in classGroup.studentIds;
+    }
+
+    function isSelfEnrollment() {
+      return isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['studentIds'])
+        && resource.data.get('studentIds', []).size()
+          < resource.data.get('maxStudents', 30)
+        && request.resource.data.studentIds.size()
+          == resource.data.studentIds.size() + 1
+        && request.resource.data.studentIds.hasAll(resource.data.studentIds)
+        && request.auth.uid in request.resource.data.studentIds;
+    }
+
+    function validClassCapacity(classData) {
+      let capacity = classData.get('maxStudents', 30);
+      let students = classData.get('studentIds', []);
+      return capacity is int
+        && capacity >= 1
+        && capacity <= 500
+        && students is list
+        && students.size() <= capacity;
+    }
+
     // -------------------------------------------------------------------------
     // USERS COLLECTION
     // -------------------------------------------------------------------------
     match /users/{userId} {
-      // Any authenticated user can read profiles (needed for roster and class lookup)
+      // These documents contain roster metadata only. Personal profile details and
+      // email addresses are stored in the owner-only private profile document.
       allow read: if isAuthenticated();
-      // Users can only write and update their own profile document
-      allow create, update, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly([
+          'id',
+          'name',
+          'role',
+          'classId',
+          'enrolledClassIds',
+          'photoUrl',
+          'profileComplete',
+          'updatedAt'
+        ]);
+      allow delete: if isOwner(userId);
+
+      match /private/{documentId} {
+        // Email, birthdays, and student/employee identifiers are private to the owner.
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // -------------------------------------------------------------------------
@@ -29,8 +102,18 @@ service cloud.firestore {
       // Authenticated users can read classes
       allow read: if isAuthenticated();
       // Only teachers or class creators can create/update/delete classes
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.teacherId == request.auth.uid
+        && validClassCapacity(request.resource.data);
+      allow update: if isAuthenticated()
+        && (
+          (
+            resource.data.teacherId == request.auth.uid
+            && request.resource.data.teacherId == resource.data.teacherId
+            && validClassCapacity(request.resource.data)
+          )
+          || isSelfEnrollment()
+        );
       allow delete: if isAuthenticated() && resource.data.teacherId == request.auth.uid;
     }
 
@@ -38,38 +121,108 @@ service cloud.firestore {
     // ACTIVITIES COLLECTION
     // -------------------------------------------------------------------------
     match /activities/{activityId} {
-      allow read: if isAuthenticated();
-      // Teachers can create and manage their activities
-      allow create, update, delete: if isAuthenticated();
+      allow read: if isAuthenticated() && classMember(resource.data.classId);
+      allow create: if isAuthenticated()
+        && request.resource.data.teacherId == request.auth.uid
+        && get(/databases/$(database)/documents/classes/$(request.resource.data.classId))
+          .data.teacherId == request.auth.uid;
+      allow update: if isAuthenticated()
+        && resource.data.teacherId == request.auth.uid
+        && request.resource.data.teacherId == resource.data.teacherId;
+      allow delete: if isAuthenticated()
+        && resource.data.teacherId == request.auth.uid;
+
+      match /teacher_private/{documentId} {
+        allow read, write: if activityTeacher(activityId);
+      }
     }
 
     // -------------------------------------------------------------------------
     // SUBMISSIONS COLLECTION
     // -------------------------------------------------------------------------
     match /submissions/{submissionId} {
-      // Students can read their own submissions, teachers can read all
-      allow read: if isAuthenticated();
-      // Students can create and update their submissions
-      allow create, update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      // Current class members can read their own work; teachers can read their
+      // class activities' submissions.
+      allow read: if isAuthenticated()
+        && (
+          activityStudent(resource.data.activityId, resource.data.studentId)
+          || activityTeacher(resource.data.activityId)
+        );
+      allow create: if isAuthenticated()
+        && (
+          activityTeacher(request.resource.data.activityId)
+          || (
+            activityStudent(
+              request.resource.data.activityId,
+              request.resource.data.studentId
+            )
+            && request.resource.data.status in ['pending', 'submitted']
+            && request.resource.data.get('grade', null) == null
+            && request.resource.data.get('feedback', null) == null
+            && request.resource.data.get('interruptionCount', 0) == 0
+            && request.resource.data.get('interruptionTimestamps', [])
+              .size() == 0
+          )
+        );
+      allow update: if activityTeacher(resource.data.activityId)
+        || (
+          activityStudent(resource.data.activityId, resource.data.studentId)
+          && request.resource.data.activityId == resource.data.activityId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status',
+            'submittedAt',
+            'fileNames',
+            'fileUrls',
+            'fileName',
+            'studentAnswerSheet',
+            'assessmentSubmissionData',
+            'startedAt',
+            'interruptionCount',
+            'interruptionTimestamps'
+          ])
+          && request.resource.data.status in ['pending', 'submitted']
+          && (
+            request.resource.data.status == resource.data.status
+            || (
+              resource.data.status == 'pending'
+              && request.resource.data.status == 'submitted'
+            )
+          )
+          && request.resource.data.get('interruptionCount', 0)
+            >= resource.data.get('interruptionCount', 0)
+          && request.resource.data.get('interruptionCount', 0)
+            <= resource.data.get('interruptionCount', 0) + 1
+          && request.resource.data.get('interruptionTimestamps', []).size()
+            == request.resource.data.get('interruptionCount', 0)
+          && request.resource.data.get('interruptionTimestamps', [])
+            .hasAll(resource.data.get('interruptionTimestamps', []))
+          && (
+            !('startedAt' in resource.data)
+            || request.resource.data.startedAt == resource.data.startedAt
+          )
+        );
+      allow delete: if activityTeacher(resource.data.activityId);
     }
 
     // -------------------------------------------------------------------------
     // ANNOUNCEMENTS COLLECTION
     // -------------------------------------------------------------------------
     match /announcements/{announcementId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated();
+      allow read: if isAuthenticated() && classMember(resource.data.classId);
+      allow create: if classTeacher(request.resource.data.classId);
+      allow update: if classTeacher(resource.data.classId)
+        && request.resource.data.classId == resource.data.classId;
+      allow delete: if classTeacher(resource.data.classId);
     }
 
     // -------------------------------------------------------------------------
     // CONFIGURATION (e.g. Gemini AI Settings)
     // -------------------------------------------------------------------------
     match /config/{configId} {
-      // Authenticated users can read configuration
-      allow read: if isAuthenticated();
-      // Only authenticated users can write configuration
-      allow write: if isAuthenticated();
+      // Shared AI configuration may contain provider credentials.
+      allow read, write: if isAuthenticated()
+        && request.auth.token.edusync_role == 'teacher';
     }
 
     // -------------------------------------------------------------------------

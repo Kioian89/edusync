@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/class_group.dart';
+import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/class_qr_dialog.dart';
@@ -17,11 +18,13 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
   void _showCreateClassDialog() {
     final subjectCtrl = TextEditingController();
     final sectionCtrl = TextEditingController();
+    final maxStudentsCtrl = TextEditingController(text: '30');
     final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: const Text('Create New Class', style: TextStyle(fontWeight: FontWeight.w900)),
         content: Form(
@@ -48,6 +51,22 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                 textCapitalization: TextCapitalization.words,
                 validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
               ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: maxStudentsCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Maximum students',
+                  prefixIcon: Icon(Icons.groups_rounded, color: AppTheme.textSecondary),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  final count = int.tryParse(value?.trim() ?? '');
+                  if (count == null || count < 1 || count > 500) {
+                    return 'Enter a number from 1 to 500';
+                  }
+                  return null;
+                },
+              ),
             ],
           ),
         ),
@@ -67,6 +86,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
               final newCls = await auth.createClass(
                 subject: subjectCtrl.text.trim(),
                 section: sectionCtrl.text.trim(),
+                maxStudents: int.parse(maxStudentsCtrl.text.trim()),
               );
               if (ctx.mounted) Navigator.pop(ctx);
 
@@ -90,11 +110,15 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
   void _showEditClassDialog(ClassGroup cls) {
     final subjectCtrl = TextEditingController(text: cls.subject);
     final sectionCtrl = TextEditingController(text: cls.section);
+    final maxStudentsCtrl = TextEditingController(
+      text: cls.maxStudents.toString(),
+    );
     final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: const Text('Edit Class', style: TextStyle(fontWeight: FontWeight.w900)),
         content: Form(
@@ -121,6 +145,25 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                 textCapitalization: TextCapitalization.words,
                 validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
               ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: maxStudentsCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Maximum students',
+                  prefixIcon: Icon(Icons.groups_rounded, color: AppTheme.textSecondary),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  final count = int.tryParse(value?.trim() ?? '');
+                  if (count == null || count < 1 || count > 500) {
+                    return 'Enter a number from 1 to 500';
+                  }
+                  if (count < cls.studentIds.length) {
+                    return 'Cannot be below ${cls.studentIds.length} current students';
+                  }
+                  return null;
+                },
+              ),
             ],
           ),
         ),
@@ -141,6 +184,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                 classId: cls.id,
                 subject: subjectCtrl.text.trim(),
                 section: sectionCtrl.text.trim(),
+                maxStudents: int.parse(maxStudentsCtrl.text.trim()),
               );
               if (ctx.mounted) Navigator.pop(ctx);
 
@@ -156,6 +200,49 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
               }
             },
             child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRemoveStudent(ClassGroup cls, User student) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          'Remove student?',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: Text(
+          'Remove ${student.name} from ${cls.displayName}? Their class access will be removed; Supabase storage claims update after their Firebase token refreshes.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.statusMissing),
+            onPressed: () async {
+              final error = await context.read<AuthProvider>().removeStudentFromClass(
+                classId: cls.id,
+                studentId: student.id,
+              );
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(error ?? '${student.name} was removed.'),
+                  backgroundColor: error == null
+                      ? AppTheme.statusGraded
+                      : AppTheme.statusMissing,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Remove student'),
           ),
         ],
       ),
@@ -323,7 +410,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                               border: Border.all(color: AppTheme.borderLight),
                             ),
                             child: Text(
-                              '${cls.studentIds.length} Students',
+                              '${students.length}/${cls.maxStudents} Students',
                               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.primary),
                             ),
                           ),
@@ -420,34 +507,23 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                         Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children: students.map((s) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceSoft,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppTheme.borderLight),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary.withValues(alpha: 0.15),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      s.name.isNotEmpty ? s.name[0].toUpperCase() : '?',
-                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppTheme.primary),
-                                    ),
-                                  ),
+                          children: students.map((student) => InputChip(
+                            avatar: CircleAvatar(
+                              backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
+                              child: Text(
+                                student.name.isNotEmpty
+                                    ? student.name[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primary,
                                 ),
-                                const SizedBox(width: 6),
-                                Text(s.name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textMain)),
-                              ],
+                              ),
                             ),
+                            label: Text(student.name),
+                            onDeleted: () => _confirmRemoveStudent(cls, student),
+                            deleteIcon: const Icon(Icons.close_rounded, size: 16),
                           )).toList(),
                         ),
                       ],

@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/activity.dart';
 import '../../models/assessment.dart';
 import '../../models/assessment_question.dart';
@@ -45,8 +47,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
     // Check if student already took it
     final auth = context.read<AuthProvider>();
     final studentId = auth.currentUser?.id ?? '';
-    final existing =
-        context.read<AssessmentProvider>().getStudentSubmission(a.id, studentId);
+    final existing = context.read<AssessmentProvider>().getStudentSubmission(
+      a.id,
+      studentId,
+    );
 
     if (existing != null) {
       _resultSubmission = existing;
@@ -77,8 +81,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
 
   Future<void> _confirmSubmit() async {
     final answeredCount = _answers.keys
-        .where((k) =>
-            _answers[k] != null && _answers[k].toString().trim().isNotEmpty)
+        .where(
+          (k) =>
+              _answers[k] != null && _answers[k].toString().trim().isNotEmpty,
+        )
         .length;
     final total = widget.assessment.questions.length;
 
@@ -86,8 +92,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Submit Assessment?',
-            style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text(
+          'Submit Assessment?',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
         content: Text(
           'You have answered $answeredCount of $total questions.\n\n'
           'Are you sure you want to finish and submit your work?',
@@ -136,6 +144,7 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
     // Update ActivityProvider submission record
     await activityProv.submitActivity(
       activityId: widget.activity.id,
+      classId: widget.activity.classId,
       studentId: student?.id ?? 'student',
       studentName: student?.name ?? 'Student',
       status: submissionResult.isGraded
@@ -153,7 +162,8 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
     if (autoSubmit && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Time expired! Your assessment has been submitted.')),
+          content: Text('Time expired! Your assessment has been submitted.'),
+        ),
       );
     }
   }
@@ -175,9 +185,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
         title: Text(
           a.title,
           style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.textMain),
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: AppTheme.textMain,
+          ),
         ),
         actions: [
           if (a.timeLimitMinutes != null && a.timeLimitMinutes! > 0)
@@ -228,18 +239,22 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                 child: Text(
                   '${_answers.length} of ${a.questions.length} Answered',
                   style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textSecondary),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
               ),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 onPressed: _isSubmitting ? null : _confirmSubmit,
                 icon: _isSubmitting
@@ -247,12 +262,17 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Icon(Icons.check_circle_rounded, size: 18),
                 label: Text(
                   _isSubmitting ? 'Submitting...' : 'Submit Answers',
                   style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 13),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],
@@ -282,24 +302,29 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                         color: AppTheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.menu_book_rounded,
-                          size: 16, color: AppTheme.primary),
+                      child: const Icon(
+                        Icons.menu_book_rounded,
+                        size: 16,
+                        color: AppTheme.primary,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       '${a.subject} • ${a.gradeLevel}',
                       style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.primary),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.primary,
+                      ),
                     ),
                     const Spacer(),
                     Text(
                       '${a.totalPoints} Total Pts',
                       style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textSecondary),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -307,9 +332,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                 Text(
                   a.instructions,
                   style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                      height: 1.4),
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -347,17 +373,23 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                   color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('Question ${index + 1}',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.primary)),
-              ),
-              Text('${q.points.toStringAsFixed(0)} pt',
+                child: Text(
+                  'Question ${index + 1}',
                   style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textMuted)),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+              Text(
+                '${q.points.toStringAsFixed(0)} pt',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -372,18 +404,20 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
               child: Text(
                 q.caseScenario!,
                 style: const TextStyle(
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    color: AppTheme.textSecondary),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: AppTheme.textSecondary,
+                ),
               ),
             ),
           ],
           Text(
             q.question,
             style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textMain),
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textMain,
+            ),
           ),
           const SizedBox(height: 14),
           _buildQuestionInput(q),
@@ -403,8 +437,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppTheme.primary.withValues(alpha: 0.08)
@@ -430,8 +466,9 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                         opt,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight:
-                              isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                           color: isSelected
                               ? AppTheme.primary
                               : AppTheme.textMain,
@@ -462,7 +499,9 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                         : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? AppTheme.primary : AppTheme.borderLight,
+                      color: isSelected
+                          ? AppTheme.primary
+                          : AppTheme.borderLight,
                       width: isSelected ? 2 : 1,
                     ),
                   ),
@@ -471,10 +510,12 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                       val,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight:
-                            isSelected ? FontWeight.w900 : FontWeight.w700,
-                        color:
-                            isSelected ? AppTheme.primary : AppTheme.textMain,
+                        fontWeight: isSelected
+                            ? FontWeight.w900
+                            : FontWeight.w700,
+                        color: isSelected
+                            ? AppTheme.primary
+                            : AppTheme.textMain,
                       ),
                     ),
                   ),
@@ -530,8 +571,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Assessment Results',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+        title: const Text(
+          'Assessment Results',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        ),
         backgroundColor: Colors.white,
         elevation: 0.5,
       ),
@@ -545,7 +588,8 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
               gradient: sub.isPassed
                   ? AppTheme.primaryGradient
                   : const LinearGradient(
-                      colors: [Color(0xFFDC2626), Color(0xFF991B1B)]),
+                      colors: [Color(0xFFDC2626), Color(0xFF991B1B)],
+                    ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: AppTheme.heroShadow,
             ),
@@ -562,17 +606,19 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
                 Text(
                   sub.isPassed ? 'Assessment Passed!' : 'Needs Improvement',
                   style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Score: ${sub.totalScore.toStringAsFixed(1)} / ${sub.maxScore.toStringAsFixed(0)} (${sub.percentage.toStringAsFixed(0)}%)',
                   style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white70),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
@@ -581,8 +627,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
 
           // Question by question review (if permitted)
           if (a.allowShowAnswersAfterSubmit) ...[
-            const Text('Question Review & Feedback',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+            const Text(
+              'Question Review & Feedback',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
             const SizedBox(height: 10),
             for (var i = 0; i < a.questions.length; i++) ...[
               _buildResultQuestionItem(i, a.questions[i], sub),
@@ -607,7 +655,10 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
   }
 
   Widget _buildResultQuestionItem(
-      int index, AssessmentQuestion q, AssessmentSubmission sub) {
+    int index,
+    AssessmentQuestion q,
+    AssessmentSubmission sub,
+  ) {
     final awarded = sub.questionScores[q.id] ?? 0.0;
     final isFullScore = awarded >= q.points;
     final studentAns = sub.answers[q.id];
@@ -629,9 +680,13 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Q${index + 1} (${q.type.label})',
-                  style: const TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w800)),
+              Text(
+                'Q${index + 1} (${q.type.label})',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -654,31 +709,38 @@ class _StudentAssessmentScreenState extends State<StudentAssessmentScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(q.question,
-              style:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+          Text(
+            q.question,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 8),
-          Text('Your Answer: ${studentAns ?? "None"}',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: isFullScore
-                    ? AppTheme.statusGraded
-                    : AppTheme.statusMissing,
-              )),
+          Text(
+            'Your Answer: ${studentAns ?? "None"}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isFullScore
+                  ? AppTheme.statusGraded
+                  : AppTheme.statusMissing,
+            ),
+          ),
           if (!isFullScore) ...[
             const SizedBox(height: 4),
-            Text('Correct Answer: ${q.correctAnswer}',
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textSecondary)),
+            Text(
+              'Correct Answer: ${q.correctAnswer}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textSecondary,
+              ),
+            ),
           ],
           if (q.explanation != null && q.explanation!.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('Explanation: ${q.explanation}',
-                style:
-                    const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+            Text(
+              'Explanation: ${q.explanation}',
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            ),
           ],
         ],
       ),

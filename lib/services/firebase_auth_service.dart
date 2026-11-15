@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'supabase_storage_service.dart';
+
 /// Centralized service handling Firebase Authentication and user profile synchronization.
 class FirebaseAuthService {
   /// Check if Firebase has been initialized in the app.
@@ -105,13 +107,14 @@ class FirebaseAuthService {
     List<String>? enrolledClassIds,
   }) async {
     final db = firestore;
-    if (db == null) return;
+    if (db == null) {
+      throw StateError('Firestore is not available to save the user profile.');
+    }
 
     try {
       final payload = <String, dynamic>{
         'id': uid,
         'name': name.trim(),
-        'email': email.trim().toLowerCase(),
         'role': role,
         'classId': classId,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -120,9 +123,53 @@ class FirebaseAuthService {
         payload['enrolledClassIds'] = enrolledClassIds;
       }
 
-      await db.collection('users').doc(uid).set(payload, SetOptions(merge: true));
+      final userRef = db.collection('users').doc(uid);
+      final batch = db.batch()
+        ..set(userRef, payload, SetOptions(merge: true))
+        ..set(userRef.collection('private').doc('profile'), {
+          'email': email.trim().toLowerCase(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      await batch.commit();
+
+      try {
+        await SupabaseStorageService.syncUserClaims(userId: uid);
+      } catch (syncErr) {
+        debugPrint('Claim sync after saveUserProfile warning: $syncErr');
+      }
     } catch (e) {
       debugPrint('Firestore saveUserProfile warning: $e');
+      rethrow;
+    }
+  }
+
+  /// Save onboarding details separately so personal identifiers and birthday
+  /// are not exposed through the readable user profile document.
+  static Future<void> saveOnboardingProfile({
+    required String uid,
+    required Map<String, dynamic> details,
+  }) async {
+    final db = firestore;
+    if (db == null) {
+      throw StateError('Firestore is not available to save your profile.');
+    }
+
+    final batch = db.batch()
+      ..set(db.collection('users').doc(uid), {
+        'profileComplete': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true))
+      ..set(
+        db.collection('users').doc(uid).collection('private').doc('profile'),
+        {...details, 'updatedAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
+    await batch.commit();
+
+    try {
+      await SupabaseStorageService.syncUserClaims(userId: uid);
+    } catch (syncErr) {
+      debugPrint('Claim sync after saveOnboardingProfile warning: $syncErr');
     }
   }
 
@@ -134,7 +181,19 @@ class FirebaseAuthService {
     try {
       final doc = await db.collection('users').doc(uid).get();
       if (doc.exists && doc.data() != null) {
-        return doc.data()!;
+        final profile = doc.data()!;
+        if (currentUser?.uid == uid) {
+          final privateDoc = await db
+              .collection('users')
+              .doc(uid)
+              .collection('private')
+              .doc('profile')
+              .get();
+          if (privateDoc.exists) {
+            profile.addAll(privateDoc.data() ?? const <String, dynamic>{});
+          }
+        }
+        return profile;
       }
     } catch (e) {
       debugPrint('Firestore getUserProfile error: $e');
@@ -169,4 +228,3 @@ class FirebaseAuthService {
     }
   }
 }
-

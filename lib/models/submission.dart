@@ -15,6 +15,9 @@ class Submission {
   final List<String?> fileUrls;
   final String? studentAnswerSheet; // In-app completed answer sheet content
   final String? assessmentSubmissionData; // Assessment submission JSON
+  final DateTime? startedAt;
+  final int interruptionCount;
+  final List<DateTime> interruptionTimestamps;
 
   Submission({
     required this.id,
@@ -30,8 +33,12 @@ class Submission {
     String? fileName,
     this.studentAnswerSheet,
     this.assessmentSubmissionData,
+    this.startedAt,
+    this.interruptionCount = 0,
+    List<DateTime>? interruptionTimestamps,
   }) : fileNames = fileNames ?? (fileName != null ? [fileName] : []),
-       fileUrls = fileUrls ?? [];
+       fileUrls = fileUrls ?? [],
+       interruptionTimestamps = interruptionTimestamps ?? [];
 
   String? get fileName => fileNames.isNotEmpty ? fileNames.first : null;
   bool get hasAssessmentSubmission =>
@@ -90,6 +97,11 @@ class Submission {
     'fileName': fileName,
     'studentAnswerSheet': studentAnswerSheet,
     'assessmentSubmissionData': assessmentSubmissionData,
+    'startedAt': startedAt?.toIso8601String(),
+    'interruptionCount': interruptionCount,
+    'interruptionTimestamps': interruptionTimestamps
+        .map((timestamp) => timestamp.toIso8601String())
+        .toList(),
   };
 
   factory Submission.fromMap(Map<String, dynamic> map) {
@@ -104,6 +116,11 @@ class Submission {
         : List<String?>.from(
             (map['fileUrls'] as List).map((url) => url?.toString()),
           );
+    final parsedInterruptionTimestamps = map['interruptionTimestamps'] == null
+        ? <DateTime>[]
+        : (map['interruptionTimestamps'] as List)
+              .map((timestamp) => DateTime.parse(timestamp.toString()))
+              .toList();
 
     return Submission(
       id: map['id'],
@@ -123,6 +140,11 @@ class Submission {
       fileName: map['fileName'],
       studentAnswerSheet: map['studentAnswerSheet'],
       assessmentSubmissionData: map['assessmentSubmissionData'],
+      startedAt: map['startedAt'] == null
+          ? null
+          : DateTime.parse(map['startedAt'].toString()),
+      interruptionCount: (map['interruptionCount'] as num?)?.toInt() ?? 0,
+      interruptionTimestamps: parsedInterruptionTimestamps,
     );
   }
 }

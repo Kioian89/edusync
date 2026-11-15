@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../models/user.dart';
@@ -18,7 +19,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   UserRole _selectedRole = UserRole.student;
-  String? _selectedClassId;
   bool _obscure = true;
   bool _loading = false;
   String? _error;
@@ -42,7 +42,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     final auth = context.read<AuthProvider>();
     final error = await auth.register(
@@ -50,31 +53,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
       role: _selectedRole,
-      classId: _selectedClassId,
     );
 
     if (!mounted) return;
-    setState(() { _loading = false; });
+    setState(() {
+      _loading = false;
+    });
 
     if (error != null) {
-      setState(() { _error = error; });
+      setState(() {
+        _error = error;
+      });
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Account created! Please sign in.'),
-          backgroundColor: Colors.green),
+      const SnackBar(
+        content: Text('Account created! Please sign in.'),
+        backgroundColor: Colors.green,
+      ),
     );
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final auth = context.watch<AuthProvider>();
-
     return Scaffold(
       appBar: AppBar(title: const Text('Create Account')),
       body: SafeArea(
@@ -94,7 +100,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+                          color: const Color(0xFF0F172A)
+                              .withValues(alpha: 0.06),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
@@ -114,8 +121,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 18),
                 Text(
                   'Join EduSync',
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -126,23 +134,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 32),
                 // Role selector
-                Text('I am a...',
-                    style: theme.textTheme.labelLarge),
+                Text('I am a...', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
                 SegmentedButton<UserRole>(
                   segments: const [
                     ButtonSegment(
-                        value: UserRole.student,
-                        label: Text('Student'),
-                        icon: Icon(Icons.person)),
+                      value: UserRole.student,
+                      label: Text('Student'),
+                      icon: Icon(Icons.person),
+                    ),
                     ButtonSegment(
-                        value: UserRole.teacher,
-                        label: Text('Teacher'),
-                        icon: Icon(Icons.school)),
+                      value: UserRole.teacher,
+                      label: Text('Teacher'),
+                      icon: Icon(Icons.school),
+                    ),
                   ],
                   selected: {_selectedRole},
-                  onSelectionChanged: (s) =>
-                      setState(() { _selectedRole = s.first; _selectedClassId = null; }),
+                  onSelectionChanged: (s) => setState(() {
+                    _selectedRole = s.first;
+                  }),
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
@@ -177,9 +187,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
@@ -189,30 +201,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                if (_selectedRole == UserRole.student) ...[
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String?>(
-                    value: _selectedClassId,
-                    decoration: const InputDecoration(
-                      labelText: 'Initial Class (Optional)',
-                      prefixIcon: Icon(Icons.class_outlined),
-                      helperText: 'You can also join any class later by scanning a QR code',
-                      helperMaxLines: 2,
-                    ),
-                    hint: const Text('Join later with QR code'),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('Join later with QR code / Join code'),
-                      ),
-                      ...auth.classes.map((c) => DropdownMenuItem<String?>(
-                        value: c.id,
-                        child: Text(c.displayName),
-                      )),
-                    ],
-                    onChanged: (v) => setState(() => _selectedClassId = v),
-                  ),
-                ],
                 if (_error != null) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -223,12 +211,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline,
-                            color: theme.colorScheme.error, size: 18),
+                        Icon(
+                          Icons.error_outline,
+                          color: theme.colorScheme.error,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(_error!,
-                              style: TextStyle(color: theme.colorScheme.error)),
+                          child: Text(
+                            _error!,
+                            style: TextStyle(color: theme.colorScheme.error),
+                          ),
                         ),
                       ],
                     ),
@@ -242,15 +235,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Text('Create Account'),
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Already have an account? ',
-                        style: theme.textTheme.bodyMedium),
+                    Text(
+                      'Already have an account? ',
+                      style: theme.textTheme.bodyMedium,
+                    ),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
                       child: const Text('Sign In'),
@@ -265,4 +263,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

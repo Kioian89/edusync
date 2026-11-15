@@ -268,18 +268,19 @@ class ActivityDetailScreen extends StatelessWidget {
                                 style: const TextStyle(fontSize: 12),
                               ),
                               onPressed: () async {
-                                final url = activity.attachmentUrlAt(index);
-                                if (url == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '$file is not available to download.',
-                                      ),
-                                    ),
-                                  );
-                                  return;
-                                }
                                 try {
+                                  final url = await ActivityAttachmentService
+                                      .downloadUrl(
+                                        storagePath: activity
+                                            .attachmentStoragePathAt(index),
+                                        legacyUrl: activity
+                                            .attachmentUrlAt(index),
+                                      );
+                                  if (url == null) {
+                                    throw StateError(
+                                      '$file is not available to download.',
+                                    );
+                                  }
                                   final opened =
                                       await ActivityAttachmentService.openDownloadUrl(
                                         url,
@@ -356,12 +357,17 @@ class ActivityDetailScreen extends StatelessWidget {
                     ss.student.name,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: sub?.submittedAt != null
-                      ? Text(
-                          'Submitted ${DateFormat('MMM d, h:mm a').format(sub!.submittedAt!)}',
+                  subtitle: sub == null
+                      ? null
+                      : Text(
+                          [
+                            if (sub.submittedAt != null)
+                              'Submitted ${DateFormat('MMM d, h:mm a').format(sub.submittedAt!)}',
+                            if (activity.monitorFocusLoss)
+                              'App exits: ${sub.interruptionCount}',
+                          ].join(' • '),
                           style: const TextStyle(fontSize: 12),
-                        )
-                      : null,
+                        ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

@@ -3,12 +3,15 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  app_links
   cloud_firestore
   file_selector_windows
   firebase_app_check
   firebase_auth
   firebase_core
   firebase_storage
+  flutter_inappwebview_windows
+  flutter_secure_storage_windows
   url_launcher_windows
 )
 

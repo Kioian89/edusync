@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function activity(activityId) {
+      return firestore.get(
+        /databases/(default)/documents/activities/$(activityId)
+      ).data;
+    }
+
+    function classGroup(classId) {
+      return firestore.get(
+        /databases/(default)/documents/classes/$(classId)
+      ).data;
+    }
+
+    function isActivityTeacher(activityId) {
+      return isSignedIn() && activity(activityId).teacherId == request.auth.uid;
+    }
+
+    function isEnrolledStudent(activityId) {
+      let activityData = activity(activityId);
+      let classData = classGroup(activityData.classId);
+      return isSignedIn() && request.auth.uid in classData.studentIds;
+    }
+
+    match /activity_attachments/{activityId}/{filePath=**} {
+      allow read: if isActivityTeacher(activityId)
+        || isEnrolledStudent(activityId);
+      allow write: if isActivityTeacher(activityId);
+    }
+
+    match /activity_submissions/{activityId}/{studentId}/{filePath=**} {
+      allow read: if isActivityTeacher(activityId)
+        || (isSignedIn() && request.auth.uid == studentId);
+      allow write: if isActivityTeacher(activityId)
+        || (
+          isSignedIn()
+          && request.auth.uid == studentId
+          && isEnrolledStudent(activityId)
+        );
+    }
+  }
+}

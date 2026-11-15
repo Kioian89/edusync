@@ -9,6 +9,8 @@ import '../../models/class_group.dart';
 import '../../services/ai_activity_helper.dart';
 import '../../providers/gemini_assistant_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/gemini_api_key_dialog.dart';
+import '../../widgets/activity_protection_controls.dart';
 import 'ai_assessment_hub_screen.dart';
 
 class ActivityCreateScreen extends StatefulWidget {
@@ -31,6 +33,10 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
   final List<PlatformFile> _attachmentFiles = [];
   String? _answerSheetTemplate;
   String? _teacherAnswerKey;
+  ActivityAttachmentAccess _attachmentAccess =
+      ActivityAttachmentAccess.download;
+  int? _timeLimitMinutes;
+  bool _monitorFocusLoss = false;
   bool _loading = false;
 
   @override
@@ -105,6 +111,12 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
   }
 
   Future<void> _generateWithAi() async {
+    final gemini = context.read<GeminiAssistantProvider>();
+    if (!gemini.hasKey) {
+      final configured = await GeminiApiKeyDialog.show(context);
+      if (!mounted || !configured) return;
+    }
+
     final topic = _titleCtrl.text.isNotEmpty
         ? _titleCtrl.text
         : (_attachmentNames.isNotEmpty
@@ -113,37 +125,40 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
 
     setState(() => _loading = true);
 
-    final geminiKey = context.read<GeminiAssistantProvider>().apiKey;
+    try {
+      final geminiKey = context.read<GeminiAssistantProvider>().apiKey;
+      final content = await AiActivityHelper.generateActivityAsync(
+        topic: topic,
+        fileNames: _attachmentNames,
+        apiKey: geminiKey,
+      );
 
-    final content = await AiActivityHelper.generateActivityAsync(
-      topic: topic,
-      fileNames: _attachmentNames,
-      apiKey: geminiKey,
-    );
+      if (!mounted) return;
 
-    if (!mounted) return;
+      setState(() {
+        _loading = false;
+        if (_titleCtrl.text.isEmpty) {
+          _titleCtrl.text = content['title'] ?? topic;
+        }
+        _descCtrl.text = content['description'] ?? '';
+        _answerSheetTemplate = content['answerSheetTemplate'];
+        _teacherAnswerKey = content['teacherKey'];
+        _pointsCtrl.text = '50';
+      });
 
-    setState(() {
-      _loading = false;
-      if (_titleCtrl.text.isEmpty) {
-        _titleCtrl.text = content['title'] ?? topic;
-      }
-      _descCtrl.text = content['description'] ?? '';
-      _answerSheetTemplate = content['answerSheetTemplate'];
-      _teacherAnswerKey = content['teacherKey'];
-      _pointsCtrl.text = '50';
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          geminiKey != null && geminiKey.isNotEmpty
-              ? '✨ Lodix AI generated custom activity tasks & rubric!'
-              : '✨ AI generated activity tasks & answer sheet template!',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('AI generated activity tasks and rubric.'),
+          backgroundColor: AppTheme.primary,
         ),
-        backgroundColor: AppTheme.primary,
-      ),
-    );
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI activity generation failed: $error')),
+      );
+    }
   }
 
   Future<void> _submit() async {
@@ -170,6 +185,9 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
             : null,
         answerSheetTemplate: _answerSheetTemplate,
         teacherAnswerKey: _teacherAnswerKey,
+        attachmentAccess: _attachmentAccess,
+        timeLimitMinutes: _timeLimitMinutes,
+        monitorFocusLoss: _monitorFocusLoss,
         studentIds: students.map((s) => s.id).toList(),
       );
     } catch (error) {
@@ -400,6 +418,18 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(color: theme.colorScheme.outline),
                 ),
+              ),
+              const SizedBox(height: 16),
+              ActivityProtectionControls(
+                attachmentAccess: _attachmentAccess,
+                onAttachmentAccessChanged: (value) =>
+                    setState(() => _attachmentAccess = value),
+                timeLimitMinutes: _timeLimitMinutes,
+                onTimeLimitChanged: (value) =>
+                    setState(() => _timeLimitMinutes = value),
+                monitorFocusLoss: _monitorFocusLoss,
+                onMonitorFocusLossChanged: (value) =>
+                    setState(() => _monitorFocusLoss = value),
               ),
               const SizedBox(height: 16),
               // Attachments

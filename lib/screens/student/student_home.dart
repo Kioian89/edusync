@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/gemini_assistant_provider.dart';
 import '../../models/class_group.dart';
 import '../../models/submission.dart';
 import '../../models/activity.dart';
@@ -1228,7 +1229,9 @@ class _StudentProfileView extends StatelessWidget {
 
                 InkWell(
                   onTap: () async {
+                    final gemini = context.read<GeminiAssistantProvider>();
                     await auth.logout();
+                    await gemini.init(userId: null);
                     if (context.mounted) {
                       Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(builder: (_) => const LoginScreen()),

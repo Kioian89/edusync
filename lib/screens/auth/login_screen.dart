@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/gemini_assistant_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../models/user.dart';
 import '../../theme/app_theme.dart';
 import '../teacher/teacher_home.dart';
 import '../student/student_home.dart';
+import 'profile_setup_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -42,20 +45,30 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     final auth = context.read<AuthProvider>();
     final error = await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
 
     if (!mounted) return;
-    setState(() { _loading = false; });
+    setState(() {
+      _loading = false;
+    });
 
     if (error != null) {
-      setState(() { _error = error; });
+      setState(() {
+        _error = error;
+      });
       return;
     }
 
     final activity = context.read<ActivityProvider>();
+    await context.read<GeminiAssistantProvider>().init(
+      userId: auth.isTeacher ? auth.currentUser?.id : null,
+    );
 
     // Start Firestore real-time sync after successful login
     if (auth.currentUser != null) {
@@ -75,12 +88,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _navigateByRole(User user) {
+    if (!user.hasCompleteProfile) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+      );
+      return;
+    }
     Widget screen = user.role == UserRole.teacher
         ? const TeacherHome()
         : const StudentHome();
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => screen),
-    );
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => screen));
   }
 
   void _showForgotPasswordDialog() {
@@ -93,7 +111,10 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Icon(Icons.lock_reset_rounded, color: AppTheme.primary),
             SizedBox(width: 10),
-            Text('Reset Password', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+            Text(
+              'Reset Password',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            ),
           ],
         ),
         content: Column(
@@ -111,7 +132,9 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 labelText: 'Email Address',
                 prefixIcon: const Icon(Icons.email_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ],
@@ -119,13 +142,18 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             onPressed: () async {
               final email = resetCtrl.text.trim();
@@ -137,7 +165,9 @@ class _LoginScreenState extends State<LoginScreen> {
               if (err == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Password reset email sent! Check your inbox.'),
+                    content: Text(
+                      'Password reset email sent! Check your inbox.',
+                    ),
                     backgroundColor: AppTheme.statusGraded,
                   ),
                 );
@@ -220,10 +250,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textMain),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textMain,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Email Address',
-                        prefixIcon: Icon(Icons.alternate_email_rounded, color: AppTheme.textSecondary),
+                        prefixIcon: Icon(
+                          Icons.alternate_email_rounded,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
                       validator: (v) =>
                           v == null || v.isEmpty ? 'Enter your email' : null,
@@ -232,10 +268,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _obscure,
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textMain),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textMain,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                          color: AppTheme.textSecondary,
+                        ),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscure
@@ -255,7 +297,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextButton(
                         onPressed: _showForgotPasswordDialog,
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
@@ -275,20 +320,33 @@ class _LoginScreenState extends State<LoginScreen> {
               if (_error != null) ...[
                 const SizedBox(height: 14),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.statusMissing.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.statusMissing.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppTheme.statusMissing.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: AppTheme.statusMissing, size: 18),
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: AppTheme.statusMissing,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _error!,
-                          style: const TextStyle(color: AppTheme.statusMissing, fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(
+                            color: AppTheme.statusMissing,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -335,7 +393,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Text(
                     "Don't have an account? ",
-                    style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   GestureDetector(
                     onTap: () => Navigator.of(context).push(

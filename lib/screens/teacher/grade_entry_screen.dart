@@ -228,6 +228,32 @@ class _GradeEntryScreenState extends State<GradeEntryScreen> {
                   DateFormat('MMM d, yyyy • h:mm a').format(sub.submittedAt!),
                 ),
               ),
+            if (sub.interruptionCount > 0) ...[
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'App exits detected: ${sub.interruptionCount}',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      for (final timestamp in sub.interruptionTimestamps)
+                        Text(
+                          DateFormat('MMM d, yyyy • h:mm:ss a')
+                              .format(timestamp.toLocal()),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             if (sub.fileNames.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(

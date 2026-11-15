@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+
 import '../models/user.dart';
 import '../models/class_group.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firestore_sync_service.dart';
+import '../services/supabase_storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
@@ -24,16 +27,23 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _currentUser != null;
   bool get isTeacher => _currentUser?.role == UserRole.teacher;
 
-  List<ClassGroup> get teacherClasses => _classes
-      .where((c) => c.teacherId == _currentUser?.id)
-      .toList();
+  List<ClassGroup> get teacherClasses =>
+      _classes.where((c) => c.teacherId == _currentUser?.id).toList();
 
   final Set<String> _pendingStudentFetches = {};
 
   List<User> studentsInClass(String classId) {
-    final cls = _classes.firstWhere((c) => c.id == classId,
-        orElse: () => ClassGroup(
-            id: '', name: '', subject: '', section: '', teacherId: '', studentIds: []));
+    final cls = _classes.firstWhere(
+      (c) => c.id == classId,
+      orElse: () => ClassGroup(
+        id: '',
+        name: '',
+        subject: '',
+        section: '',
+        teacherId: '',
+        studentIds: [],
+      ),
+    );
 
     // Proactively fetch student details from Firestore if missing locally
     _fetchMissingStudentProfiles(cls.studentIds);
@@ -43,7 +53,8 @@ class AuthProvider extends ChangeNotifier {
       if (match != null) return match;
       return User(
         id: sid,
-        name: 'Student (${sid.length > 6 ? sid.substring(sid.length - 4) : sid})',
+        name:
+            'Student (${sid.length > 6 ? sid.substring(sid.length - 4) : sid})',
         email: '',
         role: UserRole.student,
         classId: classId,
@@ -53,8 +64,13 @@ class AuthProvider extends ChangeNotifier {
 
   void _fetchMissingStudentProfiles(List<String> studentIds) {
     if (!FirebaseAuthService.isFirebaseAvailable) return;
-    final missing = studentIds.where((id) =>
-        !_users.any((u) => u.id == id) && !_pendingStudentFetches.contains(id)).toList();
+    final missing = studentIds
+        .where(
+          (id) =>
+              !_users.any((u) => u.id == id) &&
+              !_pendingStudentFetches.contains(id),
+        )
+        .toList();
     if (missing.isEmpty) return;
 
     _pendingStudentFetches.addAll(missing);
@@ -66,11 +82,15 @@ class AuthProvider extends ChangeNotifier {
           if (profile != null) {
             final u = User(
               id: id,
-              name: profile['name'] ?? 'Student (${id.length > 4 ? id.substring(id.length - 4) : id})',
+              name:
+                  profile['name'] ??
+                  'Student (${id.length > 4 ? id.substring(id.length - 4) : id})',
               email: profile['email'] ?? '',
               role: UserRole.student,
               classId: profile['classId'],
-              enrolledClassIds: List<String>.from(profile['enrolledClassIds'] ?? []),
+              enrolledClassIds: List<String>.from(
+                profile['enrolledClassIds'] ?? [],
+              ),
               photoUrl: profile['photoUrl'],
             );
             final idx = _users.indexWhere((existing) => existing.id == id);
@@ -104,12 +124,14 @@ class AuthProvider extends ChangeNotifier {
     if (classId != null && classId.isNotEmpty) {
       try {
         return _classes.firstWhere(
-            (c) => c.id == classId && c.studentIds.contains(_currentUser!.id));
+          (c) => c.id == classId && c.studentIds.contains(_currentUser!.id),
+        );
       } catch (_) {}
     }
     try {
-      return _classes
-          .firstWhere((c) => c.studentIds.contains(_currentUser!.id));
+      return _classes.firstWhere(
+        (c) => c.studentIds.contains(_currentUser!.id),
+      );
     } catch (_) {
       return null;
     }
@@ -129,42 +151,47 @@ class AuthProvider extends ChangeNotifier {
 
     _users = [
       User(
-          id: teacherId,
-          name: 'Ms. Santos',
-          email: 'teacher@edusync.com',
-          password: 'teacher123',
-          role: UserRole.teacher),
+        id: teacherId,
+        name: 'Ms. Santos',
+        email: 'teacher@edusync.com',
+        password: 'teacher123',
+        role: UserRole.teacher,
+      ),
       User(
-          id: studentId1,
-          name: 'Juan dela Cruz',
-          email: 'juan@edusync.com',
-          password: 'student123',
-          role: UserRole.student,
-          classId: classId),
+        id: studentId1,
+        name: 'Juan dela Cruz',
+        email: 'juan@edusync.com',
+        password: 'student123',
+        role: UserRole.student,
+        classId: classId,
+      ),
       User(
-          id: studentId2,
-          name: 'Maria Reyes',
-          email: 'maria@edusync.com',
-          password: 'student123',
-          role: UserRole.student,
-          classId: classId),
+        id: studentId2,
+        name: 'Maria Reyes',
+        email: 'maria@edusync.com',
+        password: 'student123',
+        role: UserRole.student,
+        classId: classId,
+      ),
       User(
-          id: studentId3,
-          name: 'Pedro Garcia',
-          email: 'pedro@edusync.com',
-          password: 'student123',
-          role: UserRole.student,
-          classId: classId),
+        id: studentId3,
+        name: 'Pedro Garcia',
+        email: 'pedro@edusync.com',
+        password: 'student123',
+        role: UserRole.student,
+        classId: classId,
+      ),
     ];
 
     _classes = [
       ClassGroup(
-          id: classId,
-          name: 'Grade 10 - Science',
-          subject: 'Science',
-          section: 'Section A',
-          teacherId: teacherId,
-          studentIds: [studentId1, studentId2, studentId3]),
+        id: classId,
+        name: 'Grade 10 - Science',
+        subject: 'Science',
+        section: 'Section A',
+        teacherId: teacherId,
+        studentIds: [studentId1, studentId2, studentId3],
+      ),
     ];
   }
 
@@ -176,11 +203,15 @@ class AuthProvider extends ChangeNotifier {
 
     if (usersJson != null) {
       final list = jsonDecode(usersJson) as List;
-      _users = list.map((m) => User.fromMap(Map<String, dynamic>.from(m))).toList();
+      _users = list
+          .map((m) => User.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
     }
     if (classesJson != null) {
       final list = jsonDecode(classesJson) as List;
-      _classes = list.map((m) => ClassGroup.fromMap(Map<String, dynamic>.from(m))).toList();
+      _classes = list
+          .map((m) => ClassGroup.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
     }
     if (currentUserId != null) {
       try {
@@ -197,8 +228,14 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('users', jsonEncode(_users.map((u) => u.toMap()).toList()));
-    await prefs.setString('classes', jsonEncode(_classes.map((c) => c.toMap()).toList()));
+    await prefs.setString(
+      'users',
+      jsonEncode(_users.map((u) => u.toMap()).toList()),
+    );
+    await prefs.setString(
+      'classes',
+      jsonEncode(_classes.map((c) => c.toMap()).toList()),
+    );
   }
 
   Future<String?> login(String email, String password) async {
@@ -215,48 +252,40 @@ class AuthProvider extends ChangeNotifier {
 
         if (cred?.user != null) {
           final fbUser = cred!.user!;
-          User? matchedUser;
+          User? matchedUser = _users
+              .where((u) => u.id == fbUser.uid)
+              .firstOrNull;
+          matchedUser ??= _users
+              .where((u) => u.email.toLowerCase() == cleanEmail.toLowerCase())
+              .firstOrNull;
 
-          try {
-            matchedUser = _users.firstWhere(
-              (u) =>
-                  u.id == fbUser.uid ||
-                  u.email.toLowerCase() == cleanEmail.toLowerCase(),
+          final profile = await FirebaseAuthService.getUserProfile(fbUser.uid);
+          if (profile != null) {
+            matchedUser = User.fromMap({
+              ...?matchedUser?.toMap(),
+              ...profile,
+              'id': fbUser.uid,
+              'name': profile['name'] ?? fbUser.displayName ?? 'EduSync User',
+              'email': fbUser.email ?? cleanEmail,
+            });
+          } else {
+            matchedUser ??= User(
+              id: fbUser.uid,
+              name: fbUser.displayName ?? cleanEmail.split('@').first,
+              email: fbUser.email ?? cleanEmail,
+              role: UserRole.student,
             );
-          } catch (_) {
-            matchedUser = null;
           }
 
-          if (matchedUser == null) {
-            // Check Firestore for remote profile
-            final profile =
-                await FirebaseAuthService.getUserProfile(fbUser.uid);
-            if (profile != null) {
-              matchedUser = User(
-                id: fbUser.uid,
-                name: profile['name'] ?? fbUser.displayName ?? 'EduSync User',
-                email: fbUser.email ?? cleanEmail,
-                role: UserRole.values.firstWhere(
-                  (r) => r.name == profile['role'],
-                  orElse: () => UserRole.student,
-                ),
-                classId: profile['classId'],
-                enrolledClassIds: profile['enrolledClassIds'] != null
-                    ? List<String>.from(profile['enrolledClassIds'])
-                    : (profile['classId'] != null ? [profile['classId']] : []),
-              );
-            } else {
-              matchedUser = User(
-                id: fbUser.uid,
-                name: fbUser.displayName ??
-                    (cleanEmail.split('@').first),
-                email: fbUser.email ?? cleanEmail,
-                role: UserRole.student,
-              );
-            }
+          final existingUserIndex = _users.indexWhere(
+            (user) => user.id == fbUser.uid,
+          );
+          if (existingUserIndex == -1) {
             _users.add(matchedUser);
-            await _saveData();
+          } else {
+            _users[existingUserIndex] = matchedUser;
           }
+          await _saveData();
 
           _currentUser = matchedUser;
           final prefs = await SharedPreferences.getInstance();
@@ -268,9 +297,11 @@ class AuthProvider extends ChangeNotifier {
       } on fb.FirebaseAuthException catch (e) {
         // Fallback for pre-seeded offline demo accounts (teacher@edusync.com, etc.)
         try {
-          final demoUser = _users.firstWhere((u) =>
-              u.email.toLowerCase() == cleanEmail.toLowerCase() &&
-              u.password == cleanPass);
+          final demoUser = _users.firstWhere(
+            (u) =>
+                u.email.toLowerCase() == cleanEmail.toLowerCase() &&
+                u.password == cleanPass,
+          );
           _currentUser = demoUser;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('currentUserId', demoUser.id);
@@ -287,9 +318,11 @@ class AuthProvider extends ChangeNotifier {
 
     // 2. Local fallback if Firebase is not active or offline
     try {
-      final user = _users.firstWhere((u) =>
-          u.email.toLowerCase() == cleanEmail.toLowerCase() &&
-          u.password == cleanPass);
+      final user = _users.firstWhere(
+        (u) =>
+            u.email.toLowerCase() == cleanEmail.toLowerCase() &&
+            u.password == cleanPass,
+      );
       _currentUser = user;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('currentUserId', user.id);
@@ -299,6 +332,70 @@ class AuthProvider extends ChangeNotifier {
     } catch (_) {
       return 'Invalid email or password.';
     }
+  }
+
+  Future<String?> completeCurrentUserProfile({
+    String? studentId,
+    DateTime? birthday,
+    String? course,
+    String? yearLevel,
+    String? section,
+    String? employeeId,
+    String? department,
+    List<String>? coursesTaught,
+  }) async {
+    final user = _currentUser;
+    if (user == null) return 'Sign in before completing your profile.';
+
+    final updatedUser = user.copyWith(
+      studentId: studentId?.trim(),
+      birthday: birthday,
+      course: course?.trim(),
+      yearLevel: yearLevel?.trim(),
+      section: section?.trim(),
+      employeeId: employeeId?.trim(),
+      department: department?.trim(),
+      coursesTaught: coursesTaught,
+      profileComplete: true,
+    );
+    if (!updatedUser.hasCompleteProfile) {
+      return 'Please complete all required profile fields.';
+    }
+
+    try {
+      await FirebaseAuthService.saveOnboardingProfile(
+        uid: user.id,
+        details: {
+          if (updatedUser.studentId != null) 'studentId': updatedUser.studentId,
+          if (updatedUser.birthday != null)
+            'birthday': updatedUser.birthday!.toIso8601String(),
+          if (updatedUser.course != null) 'course': updatedUser.course,
+          if (updatedUser.yearLevel != null) 'yearLevel': updatedUser.yearLevel,
+          if (updatedUser.section != null) 'section': updatedUser.section,
+          if (updatedUser.employeeId != null)
+            'employeeId': updatedUser.employeeId,
+          if (updatedUser.department != null)
+            'department': updatedUser.department,
+          if (updatedUser.coursesTaught.isNotEmpty)
+            'coursesTaught': updatedUser.coursesTaught,
+        },
+      );
+    } catch (error) {
+      debugPrint('Profile onboarding save failed: $error');
+      return 'Could not save your profile. Check your connection and try again.';
+    }
+
+    _currentUser = updatedUser;
+    final index = _users.indexWhere((candidate) => candidate.id == user.id);
+    if (index == -1) {
+      _users.add(updatedUser);
+    } else {
+      _users[index] = updatedUser;
+    }
+    await _saveData();
+    await SupabaseStorageService.syncUserClaims(userId: user.id);
+    notifyListeners();
+    return null;
   }
 
   Future<String?> register({
@@ -311,8 +408,9 @@ class AuthProvider extends ChangeNotifier {
     final cleanEmail = email.trim();
     final cleanName = name.trim();
 
-    final exists =
-        _users.any((u) => u.email.toLowerCase() == cleanEmail.toLowerCase());
+    final exists = _users.any(
+      (u) => u.email.toLowerCase() == cleanEmail.toLowerCase(),
+    );
     if (exists) return 'An account with this email already exists.';
 
     String userId = _uuid.v4();
@@ -341,6 +439,7 @@ class AuthProvider extends ChangeNotifier {
         return FirebaseAuthService.getFriendlyErrorMessage(e);
       } catch (e) {
         debugPrint('Firebase registration error: $e');
+        return 'Account was created, but its profile could not be saved: $e';
       }
     }
 
@@ -365,11 +464,16 @@ class AuthProvider extends ChangeNotifier {
           section: cls.section,
           teacherId: cls.teacherId,
           studentIds: [...cls.studentIds, newUser.id],
+          maxStudents: cls.maxStudents,
         );
       }
     }
 
     await _saveData();
+    await SupabaseStorageService.syncUserClaims(
+      userId: userId,
+      classId: classId,
+    );
     notifyListeners();
     return null;
   }
@@ -377,6 +481,7 @@ class AuthProvider extends ChangeNotifier {
   Future<ClassGroup?> createClass({
     required String subject,
     required String section,
+    int maxStudents = 30,
   }) async {
     if (_currentUser == null) return null;
     final cls = ClassGroup(
@@ -386,12 +491,17 @@ class AuthProvider extends ChangeNotifier {
       section: section,
       teacherId: _currentUser!.id,
       studentIds: [],
+      maxStudents: maxStudents,
     );
     _classes.add(cls);
     await _saveData();
     if (FirestoreSyncService.isAvailable) {
       await FirestoreSyncService.saveClass(cls);
     }
+    await SupabaseStorageService.syncUserClaims(
+      userId: _currentUser!.id,
+      classId: cls.id,
+    );
     notifyListeners();
     return cls;
   }
@@ -401,6 +511,7 @@ class AuthProvider extends ChangeNotifier {
     required String classId,
     required String subject,
     required String section,
+    int? maxStudents,
   }) async {
     final idx = _classes.indexWhere((c) => c.id == classId);
     if (idx == -1) return null;
@@ -413,6 +524,7 @@ class AuthProvider extends ChangeNotifier {
       section: section,
       teacherId: existing.teacherId,
       studentIds: existing.studentIds,
+      maxStudents: maxStudents ?? existing.maxStudents,
     );
 
     _classes[idx] = updated;
@@ -420,6 +532,10 @@ class AuthProvider extends ChangeNotifier {
     if (FirestoreSyncService.isAvailable) {
       await FirestoreSyncService.saveClass(updated);
     }
+    await SupabaseStorageService.syncUserClaims(
+      userId: existing.teacherId,
+      classId: updated.id,
+    );
     notifyListeners();
     return updated;
   }
@@ -429,11 +545,17 @@ class AuthProvider extends ChangeNotifier {
     final idx = _classes.indexWhere((c) => c.id == classId);
     if (idx == -1) return false;
 
+    final existing = _classes[idx];
+    final affectedUserIds = [existing.teacherId, ...existing.studentIds];
+
     _classes.removeAt(idx);
     await _saveData();
     if (FirestoreSyncService.isAvailable) {
       await FirestoreSyncService.deleteClass(classId);
     }
+    await SupabaseStorageService.syncUserClaims(
+      userIds: affectedUserIds,
+    );
     notifyListeners();
     return true;
   }
@@ -444,7 +566,13 @@ class AuthProvider extends ChangeNotifier {
     if (localIdx != -1) return _classes[localIdx];
 
     if (FirestoreSyncService.isAvailable) {
-      final remote = await FirestoreSyncService.getClassById(classId);
+      ClassGroup? remote;
+      try {
+        remote = await FirestoreSyncService.getClassById(classId);
+      } catch (error) {
+        debugPrint('Could not fetch class $classId: $error');
+        return null;
+      }
       if (remote != null) {
         _classes.add(remote);
         await _saveData();
@@ -462,10 +590,34 @@ class AuthProvider extends ChangeNotifier {
     required String studentId,
   }) async {
     var classIdx = _classes.indexWhere((c) => c.id == classId);
-    if (classIdx == -1) {
+    final isSelfStudentEnrollment =
+        _currentUser?.id == studentId && _currentUser?.role == UserRole.student;
+
+    if (isSelfStudentEnrollment && FirestoreSyncService.isAvailable) {
+      ClassGroup? remote;
+      try {
+        remote = await FirestoreSyncService.getClassById(classId);
+      } catch (error) {
+        return 'Could not verify the class section. Please try again. $error';
+      }
+      if (remote == null) {
+        return 'Class not found. Please check the QR code or Join Code.';
+      }
+      if (classIdx == -1) {
+        _classes.add(remote);
+        classIdx = _classes.length - 1;
+      } else {
+        _classes[classIdx] = remote;
+      }
+    } else if (classIdx == -1) {
       // Try to fetch remote class if not loaded yet
       if (FirestoreSyncService.isAvailable) {
-        final remote = await FirestoreSyncService.getClassById(classId);
+        ClassGroup? remote;
+        try {
+          remote = await FirestoreSyncService.getClassById(classId);
+        } catch (error) {
+          return 'Could not load the class. Please try again. $error';
+        }
         if (remote != null) {
           _classes.add(remote);
           classIdx = _classes.indexWhere((c) => c.id == classId);
@@ -496,7 +648,9 @@ class AuthProvider extends ChangeNotifier {
           email: profile['email'] ?? '',
           role: UserRole.student,
           classId: classId,
-          enrolledClassIds: List<String>.from(profile['enrolledClassIds'] ?? [classId]),
+          enrolledClassIds: List<String>.from(
+            profile['enrolledClassIds'] ?? [classId],
+          ),
         );
         _users.add(student);
         studentIdx = _users.length - 1;
@@ -506,7 +660,8 @@ class AuthProvider extends ChangeNotifier {
     if (student == null) {
       student = User(
         id: studentId,
-        name: 'Student (${studentId.length > 4 ? studentId.substring(studentId.length - 4) : studentId})',
+        name:
+            'Student (${studentId.length > 4 ? studentId.substring(studentId.length - 4) : studentId})',
         email: '$studentId@edusync.internal',
         role: UserRole.student,
         classId: classId,
@@ -523,6 +678,19 @@ class AuthProvider extends ChangeNotifier {
     if (cls.studentIds.contains(studentId)) {
       return 'You are already enrolled in ${cls.displayName}.';
     }
+    if (cls.studentIds.length >= cls.maxStudents) {
+      return '${cls.displayName} is full (${cls.maxStudents} students maximum).';
+    }
+    if (isSelfStudentEnrollment) {
+      final assignedSection = _normalizeSection(_currentUser!.section);
+      final classSection = _normalizeSection(cls.section);
+      if (assignedSection.isEmpty) {
+        return 'Complete your profile and enter your school-assigned section before joining a class.';
+      }
+      if (classSection.isEmpty || assignedSection != classSection) {
+        return 'This class is for section "${cls.section}". Your profile section is "${_currentUser!.section ?? 'not set'}". Ask your teacher if this is incorrect.';
+      }
+    }
 
     _classes[classIdx] = ClassGroup(
       id: cls.id,
@@ -531,16 +699,12 @@ class AuthProvider extends ChangeNotifier {
       section: cls.section,
       teacherId: cls.teacherId,
       studentIds: [...cls.studentIds, studentId],
+      maxStudents: cls.maxStudents,
     );
 
     // Update student's primary classId and list of all enrolled classes
     final updatedEnrolled = {...student.enrolledClassIds, classId}.toList();
-    final updatedStudent = User(
-      id: student.id,
-      name: student.name,
-      email: student.email,
-      password: student.password,
-      role: student.role,
+    final updatedStudent = student.copyWith(
       classId: classId,
       enrolledClassIds: updatedEnrolled,
     );
@@ -552,11 +716,23 @@ class AuthProvider extends ChangeNotifier {
 
     await _saveData();
     if (FirestoreSyncService.isAvailable) {
-      await FirestoreSyncService.addStudentToClass(
-        classId: classId,
-        studentId: studentId,
-      );
+      try {
+        await FirestoreSyncService.addStudentToClass(
+          classId: classId,
+          studentId: studentId,
+        );
+      } catch (error) {
+        _classes[classIdx] = cls;
+        _users[studentIdx] = student;
+        if (_currentUser?.id == studentId) _currentUser = student;
+        await _saveData();
+        return 'Could not join ${cls.displayName}: $error';
+      }
     }
+    await SupabaseStorageService.syncUserClaims(
+      userId: studentId,
+      classId: classId,
+    );
     notifyListeners();
     return null;
   }
@@ -569,19 +745,77 @@ class AuthProvider extends ChangeNotifier {
     return addStudentToClass(classId: classId, studentId: studentId);
   }
 
+  /// Remove a student from a teacher-owned class and its roster.
+  Future<String?> removeStudentFromClass({
+    required String classId,
+    required String studentId,
+  }) async {
+    final classIdx = _classes.indexWhere((cls) => cls.id == classId);
+    if (classIdx == -1) return 'Class not found.';
+
+    final cls = _classes[classIdx];
+    if (_currentUser?.role != UserRole.teacher ||
+        _currentUser?.id != cls.teacherId) {
+      return 'Only this class teacher can remove a student.';
+    }
+    if (!cls.studentIds.contains(studentId)) {
+      return 'This student is not enrolled in the class.';
+    }
+
+    final updated = ClassGroup(
+      id: cls.id,
+      name: cls.name,
+      subject: cls.subject,
+      section: cls.section,
+      teacherId: cls.teacherId,
+      studentIds: cls.studentIds.where((id) => id != studentId).toList(),
+      maxStudents: cls.maxStudents,
+    );
+    _classes[classIdx] = updated;
+    await _saveData();
+
+    if (FirestoreSyncService.isAvailable) {
+      try {
+        await FirestoreSyncService.removeStudentFromClass(
+          classId: classId,
+          studentId: studentId,
+        );
+      } catch (error) {
+        _classes[classIdx] = cls;
+        await _saveData();
+        return 'Could not remove the student. $error';
+      }
+    }
+    await SupabaseStorageService.syncUserClaims(
+      userId: studentId,
+      classId: classId,
+    );
+    notifyListeners();
+    return null;
+  }
+
+  static String _normalizeSection(String? section) =>
+      section?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ') ?? '';
+
   /// Register or update a class discovered via QR code or remote stream.
   void registerLocalClass(ClassGroup cls) {
     final idx = _classes.indexWhere((c) => c.id == cls.id);
     if (idx != -1) {
       final existing = _classes[idx];
-      final mergedStudentIds = {...existing.studentIds, ...cls.studentIds}.toList();
+      final mergedStudentIds = {
+        ...existing.studentIds,
+        ...cls.studentIds,
+      }.toList();
       _classes[idx] = ClassGroup(
         id: cls.id,
         name: cls.name.isNotEmpty ? cls.name : existing.name,
         subject: cls.subject.isNotEmpty ? cls.subject : existing.subject,
         section: cls.section.isNotEmpty ? cls.section : existing.section,
-        teacherId: cls.teacherId.isNotEmpty ? cls.teacherId : existing.teacherId,
+        teacherId: cls.teacherId.isNotEmpty
+            ? cls.teacherId
+            : existing.teacherId,
         studentIds: mergedStudentIds,
+        maxStudents: existing.maxStudents,
       );
     } else {
       _classes.add(cls);
@@ -611,32 +845,35 @@ class AuthProvider extends ChangeNotifier {
         ? FirestoreSyncService.streamClassesForTeacher(_currentUser!.id)
         : FirestoreSyncService.streamClassesForStudent(_currentUser!.id);
 
-    _classesSubscription = stream.listen((remoteClasses) {
-      if (remoteClasses.isNotEmpty) {
-        bool changed = false;
-        final List<String> allRemoteStudentIds = [];
-        for (final remote in remoteClasses) {
-          allRemoteStudentIds.addAll(remote.studentIds);
-          final idx = _classes.indexWhere((c) => c.id == remote.id);
-          if (idx != -1) {
-            _classes[idx] = remote;
-            changed = true;
-          } else {
-            _classes.add(remote);
-            changed = true;
+    _classesSubscription = stream.listen(
+      (remoteClasses) {
+        if (remoteClasses.isNotEmpty) {
+          bool changed = false;
+          final List<String> allRemoteStudentIds = [];
+          for (final remote in remoteClasses) {
+            allRemoteStudentIds.addAll(remote.studentIds);
+            final idx = _classes.indexWhere((c) => c.id == remote.id);
+            if (idx != -1) {
+              _classes[idx] = remote;
+              changed = true;
+            } else {
+              _classes.add(remote);
+              changed = true;
+            }
+          }
+          if (allRemoteStudentIds.isNotEmpty) {
+            _fetchMissingStudentProfiles(allRemoteStudentIds);
+          }
+          if (changed) {
+            _saveData();
+            notifyListeners();
           }
         }
-        if (allRemoteStudentIds.isNotEmpty) {
-          _fetchMissingStudentProfiles(allRemoteStudentIds);
-        }
-        if (changed) {
-          _saveData();
-          notifyListeners();
-        }
-      }
-    }, onError: (e) {
-      debugPrint('Firestore classes stream error: $e');
-    });
+      },
+      onError: (e) {
+        debugPrint('Firestore classes stream error: $e');
+      },
+    );
   }
 
   /// Send password reset link to user's email via Firebase Auth.
@@ -671,9 +908,9 @@ class AuthProvider extends ChangeNotifier {
       // Try Firebase Storage upload first
       if (FirebaseAuthService.isFirebaseAvailable) {
         try {
-          final ref = firebase_storage.FirebaseStorage.instance
-              .ref()
-              .child('profile_photos/${_currentUser!.id}.jpg');
+          final ref = firebase_storage.FirebaseStorage.instance.ref().child(
+            'profile_photos/${_currentUser!.id}.jpg',
+          );
           final task = await ref.putData(
             bytes,
             firebase_storage.SettableMetadata(contentType: 'image/jpeg'),
@@ -725,4 +962,3 @@ class AuthProvider extends ChangeNotifier {
     super.dispose();
   }
 }
-

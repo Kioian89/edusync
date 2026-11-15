@@ -210,7 +210,10 @@ class ActivityCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (activity.attachments.isNotEmpty) ...[
+                if (activity.attachments.isNotEmpty &&
+                    (submittedCount != null ||
+                        activity.attachmentAccess !=
+                            ActivityAttachmentAccess.viewOnly)) ...[
                   const SizedBox(height: 8),
                   Semantics(
                     button: true,
@@ -247,6 +250,19 @@ class ActivityCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                    ),
+                  ),
+                ],
+                if (activity.attachments.isNotEmpty &&
+                    submittedCount == null &&
+                    activity.attachmentAccess ==
+                        ActivityAttachmentAccess.viewOnly) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'View-only materials are available after you begin the activity.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ],
@@ -299,19 +315,16 @@ class ActivityCard extends StatelessWidget {
 
   Future<void> _openAttachment(BuildContext context, int index) async {
     final file = activity.attachments[index];
-    final url = activity.attachmentUrlAt(index);
-    if (url == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '$file is not available to download. Ask the teacher to reattach it.',
-          ),
-        ),
-      );
-      return;
-    }
-
     try {
+      final url = await ActivityAttachmentService.downloadUrl(
+        storagePath: activity.attachmentStoragePathAt(index),
+        legacyUrl: activity.attachmentUrlAt(index),
+      );
+      if (url == null) {
+        throw StateError(
+          '$file is not available to download. Ask the teacher to reattach it.',
+        );
+      }
       final opened = await ActivityAttachmentService.openDownloadUrl(url);
       if (!opened) throw StateError('No app could open this file link.');
     } catch (error) {
