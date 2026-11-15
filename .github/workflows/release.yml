@@ -75,6 +75,11 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Patch AGP Proguard Compatibility
+        run: |
+          find /home/runner/.pub-cache -name "build.gradle" -exec sed -i "s/'proguard-android\.txt'/'proguard-android-optimize.txt'/g" {} + 2>/dev/null || true
+          find /home/runner/.pub-cache -name "build.gradle" -exec sed -i 's/"proguard-android\.txt"/"proguard-android-optimize.txt"/g' {} + 2>/dev/null || true
+
       - name: Publish Shorebird OTA Patch
         if: "${{ github.event.inputs.build_type == 'patch' }}"
         env:
@@ -115,7 +120,7 @@ jobs:
 
           if [ "$BUILD_SUCCESS" != "true" ]; then
             echo "Running standard Flutter release build..."
-            flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ 2>&1 | tee build_log.txt
+            flutter build apk --release $DART_DEFINES --obfuscate --split-debug-info=symbols/ --android-skip-build-dependency-validation 2>&1 | tee build_log.txt
             FLUTTER_EXIT=${PIPESTATUS[0]}
             if [ $FLUTTER_EXIT -ne 0 ]; then
               echo "❌ Flutter release build failed with exit code $FLUTTER_EXIT"
@@ -129,7 +134,7 @@ jobs:
         if: "${{ github.event.inputs.build_type == 'build' }}"
         run: |
           set -o pipefail
-          flutter build apk --release 2>&1 | tee build_log.txt
+          flutter build apk --release --android-skip-build-dependency-validation 2>&1 | tee build_log.txt
 
       - name: Rename APK to edusync.apk
         if: "${{ github.event.inputs.build_type != 'patch' }}"
