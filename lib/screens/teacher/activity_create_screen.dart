@@ -174,6 +174,7 @@ class _ActivityCreateScreenState extends State<ActivityCreateScreen> {
         title: _titleCtrl.text.trim(),
         description: _descCtrl.text.trim(),
         classId: widget.classGroup.id,
+        classGroup: widget.classGroup,
         teacherId: auth.currentUser!.id,
         type: _type,
         deadline: _deadline,

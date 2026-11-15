@@ -153,6 +153,7 @@ class _QuickActivitySheetState extends State<QuickActivitySheet> {
         title: title,
         description: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : 'Please complete and submit the activity based on the attached document(s).',
         classId: widget.classGroup.id,
+        classGroup: widget.classGroup,
         teacherId: auth.currentUser!.id,
         type: _type,
         deadline: _deadline,

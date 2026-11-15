@@ -231,29 +231,41 @@ class FirestoreSyncService {
   }
 
   /// Create or update an activity.
-  static Future<void> saveActivity(Activity activity) async {
+  static Future<void> saveActivity(
+    Activity activity, {
+    ClassGroup? classGroup,
+  }) async {
     final db = _db;
     if (db == null) return;
 
+    if (classGroup != null) {
+      try {
+        await db
+            .collection('classes')
+            .doc(classGroup.id)
+            .set(classGroup.toMap(), SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Firestore ensure class exists notice: $e');
+      }
+    }
+
     final activityRef = db.collection('activities').doc(activity.id);
-    final privateAnswerKeyRef = activityRef
-        .collection('teacher_private')
-        .doc('answer_key');
     final answerKey = activity.teacherAnswerKey;
     final activityData = activity.toMap()
       ..['teacherAnswerKey'] = FieldValue.delete()
       ..['teacherAnswerKeyUpdatedAt'] = FieldValue.serverTimestamp();
-    final batch = db.batch()
-      ..set(activityRef, activityData, SetOptions(merge: true));
-    if (answerKey == null || answerKey.isEmpty) {
-      batch.delete(privateAnswerKeyRef);
-    } else {
-      batch.set(privateAnswerKeyRef, {
+
+    await activityRef.set(activityData, SetOptions(merge: true));
+
+    if (answerKey != null && answerKey.isNotEmpty) {
+      final privateAnswerKeyRef = activityRef
+          .collection('teacher_private')
+          .doc('answer_key');
+      await privateAnswerKeyRef.set({
         'teacherId': activity.teacherId,
         'teacherAnswerKey': answerKey,
       });
     }
-    await batch.commit();
   }
 
   /// Delete an activity and its associated submissions.

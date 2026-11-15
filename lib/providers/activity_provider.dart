@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/activity.dart';
 import '../models/announcement.dart';
+import '../models/class_group.dart';
 import '../models/submission.dart';
 import '../models/user.dart';
 import '../services/firestore_sync_service.dart';
@@ -180,6 +181,7 @@ class ActivityProvider extends ChangeNotifier {
     required ActivityType type,
     required DateTime deadline,
     required double totalPoints,
+    ClassGroup? classGroup,
     List<String>? attachments,
     List<PlatformFile>? attachmentFiles,
     String? attachmentName,
@@ -217,7 +219,7 @@ class ActivityProvider extends ChangeNotifier {
     var uploadedStoragePaths = <String>[];
     try {
       if (FirestoreSyncService.isAvailable) {
-        await FirestoreSyncService.saveActivity(activity);
+        await FirestoreSyncService.saveActivity(activity, classGroup: classGroup);
       }
       if (attachmentFiles != null && attachmentFiles.isNotEmpty) {
         uploadedStoragePaths = await ActivityAttachmentService.uploadFiles(
@@ -230,7 +232,7 @@ class ActivityProvider extends ChangeNotifier {
           attachmentStoragePaths: uploadedStoragePaths,
         );
         if (FirestoreSyncService.isAvailable) {
-          await FirestoreSyncService.saveActivity(activity);
+          await FirestoreSyncService.saveActivity(activity, classGroup: classGroup);
         }
       }
     } catch (_) {
