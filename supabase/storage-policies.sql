@@ -1,30 +1,11 @@
--- Run once in the Supabase SQL Editor after creating the private
--- "activity-documents" bucket and configuring Firebase third-party auth.
-
--- 1. Ensure auth.uid() safely handles non-UUID third-party tokens (Firebase UIDs)
--- without throwing "invalid input syntax for type uuid".
-create or replace function auth.uid()
-returns uuid
-language sql
-stable
-as $$
-  select case
-    when nullif(current_setting('request.jwt.claim.sub', true), '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-      then nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
-    when (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-      then (current_setting('request.jwt.claims', true)::jsonb ->> 'sub')::uuid
-    else null
-  end;
-$$;
-
--- 2. Drop existing policies to allow clean re-application
+-- Drop existing policies that used auth.uid()
 drop policy if exists "Class members can read activity documents" on storage.objects;
 drop policy if exists "Teachers can upload their class activity documents" on storage.objects;
 drop policy if exists "Students can upload their own class submissions" on storage.objects;
 drop policy if exists "Teachers can delete their class activity documents" on storage.objects;
 drop policy if exists "Students can delete their own class submissions" on storage.objects;
 
--- 3. Recreate policies using (auth.jwt() ->> 'sub') instead of auth.uid()
+-- Recreate policies using (auth.jwt() ->> 'sub') to safely handle Firebase Auth UIDs
 create policy "Class members can read activity documents"
 on storage.objects
 for select
