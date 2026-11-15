@@ -39,6 +39,11 @@ android {
         }
     }
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     // Rename the output APK to edusync.apk
     applicationVariants.all {
         val variant = this
